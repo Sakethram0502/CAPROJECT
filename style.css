@@ -168,12 +168,13 @@ body::before {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
     border-radius: 20px;
-    padding: 40px;
-    max-width: 900px;
+    padding: 30px;      /* Reduced padding */
+    max-width: 550px;   /* Reduced container size */
     width: 100%;
     box-shadow: var(--shadow-glow);
     position: relative;
     overflow: hidden;
+    margin: 0 auto;
 }
 
 .glass-panel::before {
