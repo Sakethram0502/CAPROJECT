@@ -1,0 +1,23 @@
+===========================================
+BACKGROUND IMAGE SETUP INSTRUCTIONS
+===========================================
+
+To use your university background image:
+
+1. Save your background image file in this folder (ca folder)
+2. Name it exactly: "background.jpg"
+3. Supported formats: JPG, JPEG, PNG
+   (If using PNG, rename the file extension in style.css from 'background.jpg' to 'background.png')
+
+The image will automatically:
+- Cover the full screen
+- Have a beautiful animated glowing border
+- Include a dark overlay for text readability
+- Work on all screens (Home, Student List, Profile, Reports)
+
+If the image doesn't appear:
+- Check the file name is exactly "background.jpg" (case-sensitive)
+- Check the file is in the same folder as index.php
+- Clear your browser cache and refresh
+
+===========================================
