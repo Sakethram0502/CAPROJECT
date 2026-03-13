@@ -1,210 +1,104 @@
 <?php
-// PDF Generator for CA Project Management System
 require_once __DIR__ . '/db.php';
+session_start();
 
-// Get parameters
-$course = $_GET['course'] ?? '';
-$year = $_GET['year'] ?? '';
+$course = $_GET['course'] ?? ''; // BCA, MCA, or ALL
+$format = $_GET['format'] ?? 'pdf';
+$staff_name = $_SESSION['staff_name'] ?? '';
 
-if (!$course || !$year) {
-    die('Invalid parameters');
+if (!$course || !$staff_name) { die('Unauthorized Access'); }
+
+// --- DYNAMIC SQL LOGIC ---
+if ($course === 'ALL') {
+    // Fetch everything for this staff member
+    $sql = "SELECT * FROM student_submissions WHERE guide_name = ? ORDER BY branch, section, reg_no";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('s', $staff_name);
+} else {
+    // Fetch specific branch only
+    $sql = "SELECT * FROM student_submissions WHERE branch = ? AND guide_name = ? ORDER BY section, reg_no";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ss', $course, $staff_name);
 }
 
-// Fetch report data
-$sql = "
-    SELECT 
-        s.reg_no,
-        s.student_name,
-        s.section,
-        COUNT(CASE WHEN r.status = 'completed' THEN 1 END) as completed_reviews
-    FROM students s
-    LEFT JOIN projects p ON p.student_id = s.student_id
-    LEFT JOIN reviews r ON r.project_id = p.project_id
-    WHERE s.course = ? AND s.year = ?
-    GROUP BY s.student_id, s.reg_no, s.student_name, s.section
-    ORDER BY s.section, s.reg_no
-";
-
+$stmt->execute();
+$result = $stmt->get_result();
 $reportData = [];
-if ($stmt = $conn->prepare($sql)) {
-    $stmt->bind_param('si', $course, $year);
-    if ($stmt->execute()) {
-        $result = $stmt->get_result();
-        while ($row = $result->fetch_assoc()) {
-            $reportData[] = $row;
-        }
+while ($row = $result->fetch_assoc()) { $reportData[] = $row; }
+$stmt->close();
+
+// --- EXCEL DOWNLOAD ---
+if ($format === 'excel') {
+    $filename = "Master_Project_Report_" . date('Ymd') . ".xls";
+    header("Content-Type: application/vnd.ms-excel");
+    header("Content-Disposition: attachment; filename=\"$filename\"");
+    
+    echo "Branch\tReg No\tName\tDomain\tR1 Marks\tR1 Remarks\tR2 Marks\tR2 Remarks\tR3 Marks\tR3 Remarks\tR4 Marks\tR4 Remarks\tR5 Marks\tR5 Remarks\n";
+    foreach ($reportData as $row) {
+        echo $row['branch']."\t".$row['reg_no']."\t".$row['student_name']."\t".$row['domain']."\t".
+             ($row['r1_marks']??'0')."\t".($row['r1_notes']??'-')."\t".
+             ($row['r2_marks']??'0')."\t".($row['r2_notes']??'-')."\t".
+             ($row['r3_marks']??'0')."\t".($row['r3_notes']??'-')."\t".
+             ($row['r4_marks']??'0')."\t".($row['r4_notes']??'-')."\t".
+             ($row['r5_marks']??'0')."\t".($row['r5_notes']??'-')."\n";
     }
-    $stmt->close();
+    exit();
 }
-
-// Generate PDF using simple HTML to PDF approach
-// For better PDF generation, you can install TCPDF or FPDF library
-// This uses a simple approach that works with most browsers
-
-header('Content-Type: text/html; charset=UTF-8');
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Report - <?php echo htmlspecialchars($course); ?> Year <?php echo htmlspecialchars($year); ?></title>
+    <title>Master_Project_Report_<?php echo date('d-m-Y'); ?></title>
     <style>
-        @media print {
-            @page {
-                margin: 20mm;
-                size: A4;
-            }
-            body {
-                margin: 0;
-                padding: 0;
-            }
-        }
-        body {
-            font-family: 'Arial', sans-serif;
-            margin: 20px;
-            color: #333;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 3px solid #0066ff;
-            padding-bottom: 20px;
-        }
-        .header h1 {
-            color: #0066ff;
-            margin: 0;
-            font-size: 28px;
-        }
-        .header h2 {
-            color: #666;
-            margin: 5px 0;
-            font-size: 18px;
-            font-weight: normal;
-        }
-        .report-info {
-            margin: 20px 0;
-            padding: 15px;
-            background: #f5f5f5;
-            border-left: 4px solid #0066ff;
-        }
-        .report-info p {
-            margin: 5px 0;
-            font-size: 14px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        th {
-            background: linear-gradient(135deg, #0066ff, #00d4ff);
-            color: white;
-            padding: 12px;
-            text-align: left;
-            font-weight: bold;
-            border: 1px solid #0052cc;
-        }
-        td {
-            padding: 10px 12px;
-            border: 1px solid #ddd;
-        }
-        tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        tr:hover {
-            background: #f0f7ff;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        .badge-success {
-            background: #00ff88;
-            color: #000;
-        }
-        .badge-pending {
-            background: #ff4444;
-            color: #fff;
-        }
-        .footer {
-            margin-top: 30px;
-            text-align: center;
-            color: #666;
-            font-size: 12px;
-            border-top: 2px solid #eee;
-            padding-top: 15px;
-        }
+        body { font-family: sans-serif; font-size: 10px; margin: 15px; }
+        .header { text-align: center; border-bottom: 2px solid #0066ff; padding-bottom: 10px; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        th { background: #0066ff; color: white; padding: 6px; border: 1px solid #ddd; }
+        td { padding: 5px; border: 1px solid #ddd; vertical-align: top; word-wrap: break-word; }
+        .notes { font-size: 8px; color: #777; font-style: italic; display: block; border-top: 1px solid #eee; margin-top: 2px; }
+        .branch-tag { font-weight: bold; color: #0066ff; font-size: 9px; }
+        @media print { @page { size: landscape; margin: 5mm; } }
     </style>
     <script>
-        // Auto-trigger print dialog for PDF download
         window.onload = function() {
-            setTimeout(function() {
-                window.print();
-            }, 250);
-        }
-        
-        // Handle print dialog close
-        window.onafterprint = function() {
-            // Optional: close window after printing (uncomment if needed)
-            // window.close();
+            window.print();
+            setTimeout(function() { window.close(); }, 1500);
         }
     </script>
 </head>
 <body>
     <div class="header">
-        <h1>CA – Department of Computer Applications</h1>
-        <h2>Vignan University</h2>
-        <h2>BCA & MCA Project Management System</h2>
+        <h1>VFSTR - Department of Computer Applications</h1>
+        <h2>Master Project Progress Report (BCA & MCA)</h2>
+        <p>Faculty Guide: <?php echo htmlspecialchars($staff_name); ?> | Generated: <?php echo date('d-M-Y H:i'); ?></p>
     </div>
-    
-    <div class="report-info">
-        <p><strong>Course:</strong> <?php echo htmlspecialchars($course); ?></p>
-        <p><strong>Year:</strong> <?php echo htmlspecialchars($year); ?></p>
-        <p><strong>Generated Date:</strong> <?php echo date('d F Y, h:i A'); ?></p>
-        <p><strong>Total Students:</strong> <?php echo count($reportData); ?></p>
-    </div>
-    
-    <?php if (!empty($reportData)): ?>
-        <table>
-            <thead>
-                <tr>
-                    <th>S.No</th>
-                    <th>Registration Number</th>
-                    <th>Name</th>
-                    <th>Section</th>
-                    <th>Completed Reviews</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php 
-                $sno = 1;
-                foreach ($reportData as $row): 
-                ?>
-                    <tr>
-                        <td><?php echo $sno++; ?></td>
-                        <td><?php echo htmlspecialchars($row['reg_no']); ?></td>
-                        <td><?php echo htmlspecialchars($row['student_name']); ?></td>
-                        <td><?php echo htmlspecialchars($row['section']); ?></td>
-                        <td>
-                            <span class="badge <?php echo (int)$row['completed_reviews'] > 0 ? 'badge-success' : 'badge-pending'; ?>">
-                                <?php echo (int)$row['completed_reviews']; ?>
-                            </span>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    <?php else: ?>
-        <p style="text-align: center; color: #999; margin-top: 40px;">No data available for the selected criteria.</p>
-    <?php endif; ?>
-    
-    <div class="footer">
-        <p>This is a computer-generated report from CA Project Management System</p>
-        <p>Vignan University - Department of Computer Applications</p>
-    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40px;">Branch</th>
+                <th style="width: 70px;">Reg No</th>
+                <th style="width: 90px;">Student Name</th>
+                <th>Domain & Title</th>
+                <th>R1 (M/R)</th><th>R2 (M/R)</th><th>R3 (M/R)</th><th>R4 (M/R)</th><th>R5 (M/R)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php foreach ($reportData as $row): ?>
+            <tr>
+                <td class="branch-tag"><?php echo $row['branch']; ?></td>
+                <td><strong><?php echo $row['reg_no']; ?></strong></td>
+                <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                <td><strong><?php echo htmlspecialchars($row['domain']); ?></strong>: <?php echo htmlspecialchars($row['project_title']); ?></td>
+                <td><?php echo $row['r1_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r1_notes']?:'-'); ?></span></td>
+                <td><?php echo $row['r2_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r2_notes']?:'-'); ?></span></td>
+                <td><?php echo $row['r3_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r3_notes']?:'-'); ?></span></td>
+                <td><?php echo $row['r4_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r4_notes']?:'-'); ?></span></td>
+                <td><?php echo $row['r5_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r5_notes']?:'-'); ?></span></td>
+            </tr>
+            <?php endforeach; ?>
+        </tbody>
+    </table>
 </body>
 </html>

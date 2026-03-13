@@ -1,5 +1,6 @@
 <?php
 session_start();
+include('db.php'); 
 $username = $_SESSION['username'] ?? 'Student';
 ?>
 <!DOCTYPE html>
@@ -7,7 +8,7 @@ $username = $_SESSION['username'] ?? 'Student';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard | Project Management</title>
+    <title>Student Dashboard | Project Management System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,7 +17,7 @@ $username = $_SESSION['username'] ?? 'Student';
 
     <div class="dashboard-wrapper">
         <header class="top-nav">
-            <div class="top-nav-left"><span class="brand-title">Department of Computer Applications</span></div>
+            <div class="top-nav-left"><span class="brand-title">Department of Computer Applications - VFSTR</span></div>
             <div class="top-nav-right">
                 <span class="welcome-text">Welcome <?php echo htmlspecialchars($username); ?></span>
                 <a href="logout.php" class="btn-link nav-logout">Logout</a>
@@ -27,34 +28,35 @@ $username = $_SESSION['username'] ?? 'Student';
             <div class="glass-panel floating">
                 <div class="app-header">
                     <h1>Project Submission</h1>
-                    <h3>Department of Computer Applications</h3>
+                    <p>Enter your project details for review registration.</p>
                 </div>
 
                 <form method="post" action="thankyou.php" class="form-glass">
                     <div class="form-group">
                         <label for="reg_no">Registration Number</label>
-                        <input type="text" id="reg_no" name="reg_no" required placeholder="e.g. 241FD...">
+                        <input type="text" id="reg_no" name="reg_no" required placeholder="e.g. 231FA04000">
                     </div>
 
                     <div class="form-group">
                         <label for="student_name">Student Name</label>
-                        <input type="text" id="student_name" name="student_name" required>
+                        <input type="text" id="student_name" name="student_name" required placeholder="Your Full Name">
                     </div>
 
-                    <div class="form-group">
-                        <label for="branch">Branch</label>
-                        <select id="branch" name="branch" required onchange="updateOptions()">
-                            <option value="">-- Select Branch --</option>
-                            <option value="BCA">BCA</option>
-                            <option value="MCA">MCA</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="year">Year</label>
-                        <select id="year" name="year" required onchange="updateOptions()">
-                            <option value="">-- Select Year --</option>
-                        </select>
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="branch">Branch</label>
+                            <select id="branch" name="branch" required onchange="updateOptions()">
+                                <option value="">-- Select --</option>
+                                <option value="BCA">BCA</option>
+                                <option value="MCA">MCA</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label for="year">Year</label>
+                            <select id="year" name="year" required onchange="updateOptions()">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -65,14 +67,20 @@ $username = $_SESSION['username'] ?? 'Student';
                     </div>
 
                     <div class="form-group">
-                        <label for="project_title">Project Title</label>
-                        <input type="text" id="project_title" name="project_title" required>
+                        <label for="domain">Project Domain</label>
+                        <input type="text" id="domain" name="domain" required placeholder="e.g. Web Development, AI, Cyber Security">
                     </div>
 
                     <div class="form-group">
-                        <label for="guide_name">Guide Name</label>
+                        <label for="project_title">Project Title</label>
+                        <input type="text" id="project_title" name="project_title" required placeholder="Full Project Name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="guide_name">Supervisor / Guide Name</label>
                         <select id="guide_name" name="guide_name" required>
                             <option value="">-- Select Guide --</option>
+                            <option value="Dr. K. Santhi Sri">Dr. K. Santhi Sri</option>
                             <option value="Rama">Rama</option>
                             <option value="Sita">Sita</option>
                             <option value="Chandu">Chandu</option>
@@ -81,7 +89,7 @@ $username = $_SESSION['username'] ?? 'Student';
                         </select>
                     </div>
 
-                    <button type="submit" name="initial_submit" class="btn-gradient">Submit Project Title</button>
+                    <button type="submit" name="initial_submit" class="btn-gradient">Submit Project Details</button>
                 </form>
             </div>
         </main>
@@ -94,7 +102,7 @@ $username = $_SESSION['username'] ?? 'Student';
         const sectionSelect = document.getElementById('section');
         const selectedYear = yearSelect.value;
 
-        yearSelect.innerHTML = '<option value="">-- Select Year --</option>';
+        yearSelect.innerHTML = '<option value="">-- Select --</option>';
         if (branch === 'BCA') {
             ['1st Year', '2nd Year', '3rd Year'].forEach(y => yearSelect.add(new Option(y, y)));
         } else if (branch === 'MCA') {
