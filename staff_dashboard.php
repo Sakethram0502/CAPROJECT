@@ -2,6 +2,7 @@
 session_start();
 include('db.php'); 
 
+// Accessing staff name from session
 $username = $_SESSION['staff_name'] ?? 'Staff';
 $view = $_GET['view'] ?? 'overview';
 
@@ -12,16 +13,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_marks'])) {
     $marks = $_POST['marks'];
     $notes = $_POST['notes'];
 
-    // Dynamically targeting the specific review and notes columns
+    // Dynamically targeting the specific review marks and notes columns
     $marks_col = $phase . "_marks"; 
     $notes_col = $phase . "_notes"; 
     
+    // Updating both marks and remarks in one query
     $update_sql = "UPDATE student_submissions SET $marks_col = ?, $notes_col = ? WHERE reg_no = ?";
     $stmt = $conn->prepare($update_sql);
     $stmt->bind_param("iss", $marks, $notes, $reg_no);
     
     if($stmt->execute()){
         $stmt->close();
+        // Redirect to maintain the current view (BCA/MCA/Overview)
         header("Location: staff_dashboard.php?view=$view");
         exit();
     }
@@ -53,7 +56,8 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
         /* Tooltip style for notes */
         td[title] { cursor: help; border-bottom: 1px dashed rgba(255,255,255,0.3); }
         .project-subtext { display: block; font-size: 0.85em; color: #00d4ff; margin-top: 4px; }
-        textarea { resize: none; }
+        .domain-tag { display: block; font-size: 0.75em; color: #ffcc00; text-transform: uppercase; margin-top: 2px; }
+        textarea { resize: none; width: 100%; padding: 10px; border-radius: 5px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); }
     </style>
 </head>
 <body>
@@ -71,13 +75,34 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
 
         <div class="dashboard-layout">
             <aside class="sidebar">
-                <div class="sidebar-title">Menu</div>
-                <a href="staff_dashboard.php?view=overview" class="sidebar-link <?php echo $view === 'overview' ? 'active' : ''; ?>">Overview</a>
-                <a href="staff_dashboard.php?view=bca" class="sidebar-link <?php echo $view === 'bca' ? 'active' : ''; ?>">BCA Students</a>
-                <a href="staff_dashboard.php?view=mca" class="sidebar-link <?php echo $view === 'mca' ? 'active' : ''; ?>">MCA Students</a>
-                <a href="pdf_generator.php?course=<?php echo strtoupper($view); ?>" class="sidebar-link" style="color: #00d4ff;">Download Report</a>
-            </aside>
+    <div class="sidebar-title">Menu</div>
+    <a href="staff_dashboard.php?view=overview" class="sidebar-link <?php echo ($view === 'overview') ? 'active' : ''; ?>">Overview</a>
+    <a href="staff_dashboard.php?view=bca" class="sidebar-link <?php echo ($view === 'bca') ? 'active' : ''; ?>">BCA Students</a>
+    <a href="staff_dashboard.php?view=mca" class="sidebar-link <?php echo ($view === 'mca') ? 'active' : ''; ?>">MCA Students</a>
+    
+    <div style="margin-top: 40px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+        <p style="font-size: 0.7em; color: #888; margin-bottom: 10px; padding-left: 15px; letter-spacing: 1px;">EXPORTS</p>
+        
+        <?php 
+            // Default to 'ALL' for overview, otherwise use the branch name
+            $report_param = ($view === 'overview') ? 'ALL' : strtoupper($view); 
+            $display_label = ($view === 'overview') ? 'Master' : $report_param;
+        ?>
+        
+        <a href="pdf_generator.php?course=<?php echo $report_param; ?>&format=pdf" 
+           target="_blank" 
+           class="sidebar-link" 
+           style="color: #00d4ff;">
+           📄 <?php echo $display_label; ?> PDF Report
+        </a>
 
+        <a href="pdf_generator.php?course=<?php echo $report_param; ?>&format=excel" 
+           class="sidebar-link" 
+           style="color: #00ff88;">
+           📊 <?php echo $display_label; ?> Excel Sheet
+        </a>
+    </div>
+</aside>
             <main class="dashboard-main">
                 <h2 class="section-heading"><?php echo ($view === 'overview') ? "My Students" : strtoupper($view) . " Students"; ?></h2>
 
@@ -86,7 +111,7 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
                         <thead>
                             <tr>
                                 <th>Reg No</th>
-                                <th>Student & Project</th>
+                                <th>Student & Domain</th>
                                 <th>R1</th>
                                 <th>R2</th>
                                 <th>R3</th>
@@ -101,17 +126,19 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
                                     <td><?php echo htmlspecialchars($row['reg_no']); ?></td>
                                     <td>
                                         <strong><?php echo htmlspecialchars($row['student_name']); ?></strong>
+                                        <span class="domain-tag">Domain: <?php echo htmlspecialchars($row['domain'] ?? 'General'); ?></span>
                                         <span class="project-subtext"><?php echo htmlspecialchars($row['project_title']); ?></span>
                                     </td>
-                                    <td title="Notes: <?php echo htmlspecialchars($row['r1_notes'] ?? 'None'); ?>"><?php echo $row['r1_marks'] ?: '-'; ?></td>
-                                    <td title="Notes: <?php echo htmlspecialchars($row['r2_notes'] ?? 'None'); ?>"><?php echo $row['r2_marks'] ?: '-'; ?></td>
-                                    <td title="Notes: <?php echo htmlspecialchars($row['r3_notes'] ?? 'None'); ?>"><?php echo $row['r3_marks'] ?: '-'; ?></td>
-                                    <td title="Notes: <?php echo htmlspecialchars($row['r4_notes'] ?? 'None'); ?>"><?php echo $row['r4_marks'] ?: '-'; ?></td>
-                                    <td title="Notes: <?php echo htmlspecialchars($row['r5_notes'] ?? 'None'); ?>"><?php echo $row['r5_marks'] ?: '-'; ?></td>
+                                    <td title="Feedback: <?php echo htmlspecialchars($row['r1_notes'] ?? 'None'); ?>"><?php echo $row['r1_marks'] ?: '-'; ?></td>
+                                    <td title="Feedback: <?php echo htmlspecialchars($row['r2_notes'] ?? 'None'); ?>"><?php echo $row['r2_marks'] ?: '-'; ?></td>
+                                    <td title="Feedback: <?php echo htmlspecialchars($row['r3_notes'] ?? 'None'); ?>"><?php echo $row['r3_marks'] ?: '-'; ?></td>
+                                    <td title="Feedback: <?php echo htmlspecialchars($row['r4_notes'] ?? 'None'); ?>"><?php echo $row['r4_marks'] ?: '-'; ?></td>
+                                    <td title="Feedback: <?php echo htmlspecialchars($row['r5_notes'] ?? 'None'); ?>"><?php echo $row['r5_marks'] ?: '-'; ?></td>
                                     <td>
                                         <button class="btn-view btn-update" 
                                             data-reg="<?php echo $row['reg_no']; ?>" 
                                             data-name="<?php echo $row['student_name']; ?>"
+                                            data-domain="<?php echo htmlspecialchars($row['domain'] ?? 'General'); ?>"
                                             data-project="<?php echo $row['project_title']; ?>">
                                             Update
                                         </button>
@@ -127,23 +154,24 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
 
     <div class="modal-overlay" id="updateModal">
         <div class="modal-card floating">
-            <h3>Update Progress</h3>
+            <h3>Update Marks & Remarks</h3>
             <form method="POST" action="staff_dashboard.php?view=<?php echo $view; ?>" class="form-glass modal-form">
                 <input type="hidden" name="reg_no" id="modalRegNo">
                 
                 <div class="form-group">
                     <p style="margin: 0; font-size: 0.9em; color: #ccc;">Student: <span id="dispName" style="color: white; font-weight: bold;"></span></p>
+                    <p style="margin: 2px 0; font-size: 0.8em; color: #ffcc00;">Domain: <span id="dispDomain"></span></p>
                     <p style="margin: 5px 0 15px 0; font-size: 0.85em; color: #00d4ff;">Project: <span id="dispProject"></span></p>
                 </div>
                 
                 <div class="form-group">
                     <label>Review Phase</label>
                     <select name="review_phase" required>
-                        <option value="r1">Review 1 </option>
-                        <option value="r2">Review 2 </option>
-                        <option value="r3">Review 3 </option>
-                        <option value="r4">Review 4 </option>
-                        <option value="r5">Review 5 </option>
+                        <option value="r1">Review 1</option>
+                        <option value="r2">Review 2</option>
+                        <option value="r3">Review 3</option>
+                        <option value="r4">Review 4</option>
+                        <option value="r5">Review 5</option>
                     </select>
                 </div>
 
@@ -153,8 +181,8 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
                 </div>
 
                 <div class="form-group">
-                    <label>Remarks / Feedback</label>
-                    <textarea name="notes" rows="3" placeholder="Enter feedback for this phase..."></textarea>
+                    <label>Faculty Remarks</label>
+                    <textarea name="notes" rows="3" placeholder="Enter review feedback..."></textarea>
                 </div>
 
                 <div class="modal-actions">
@@ -173,6 +201,7 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
             btn.addEventListener('click', () => {
                 document.getElementById('modalRegNo').value = btn.getAttribute('data-reg');
                 document.getElementById('dispName').innerText = btn.getAttribute('data-name');
+                document.getElementById('dispDomain').innerText = btn.getAttribute('data-domain');
                 document.getElementById('dispProject').innerText = btn.getAttribute('data-project');
                 modal.classList.add('open');
             });

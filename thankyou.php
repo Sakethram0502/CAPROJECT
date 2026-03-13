@@ -6,12 +6,10 @@ $is_duplicate = false;
 $success = false;
 $student_data = null;
 
-// PART A: HANDLE INITIAL FORM SUBMISSION FROM DASHBOARD
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['initial_submit'])) {
     $reg_no = $_POST['reg_no'];
     $year = $_POST['year'];
 
-    // CHECK IF EXISTS
     $check_sql = "SELECT * FROM student_submissions WHERE reg_no = ? AND year = ?";
     $stmt = $conn->prepare($check_sql);
     $stmt->bind_param("ss", $reg_no, $year);
@@ -22,25 +20,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['initial_submit'])) {
         $is_duplicate = true;
         $student_data = $result->fetch_assoc();
     } else {
-        // NEW INSERT
-        $sql = "INSERT INTO student_submissions (reg_no, student_name, branch, year, section, project_title, guide_name) 
-                VALUES (?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO student_submissions (reg_no, student_name, branch, year, section, domain, project_title, guide_name) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         $ins = $conn->prepare($sql);
-        $ins->bind_param("sssssss", $reg_no, $_POST['student_name'], $_POST['branch'], $year, $_POST['section'], $_POST['project_title'], $_POST['guide_name']);
-        if ($ins->execute()) {
-            $success = true;
-        }
+        $ins->bind_param("ssssssss", $reg_no, $_POST['student_name'], $_POST['branch'], $year, $_POST['section'], $_POST['domain'], $_POST['project_title'], $_POST['guide_name']);
+        if ($ins->execute()) { $success = true; }
     }
 }
 
-// PART B: HANDLE UPDATE REQUEST FROM THIS PAGE
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_update'])) {
-    $new_title = $_POST['new_title'];
-    $reg = $_POST['reg_hidden'];
-    $yr = $_POST['year_hidden'];
-
-    $upd = $conn->prepare("UPDATE student_submissions SET project_title = ? WHERE reg_no = ? AND year = ?");
-    $upd->bind_param("sss", $new_title, $reg, $yr);
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_full_update'])) {
+    $upd = $conn->prepare("UPDATE student_submissions SET student_name=?, branch=?, section=?, domain=?, project_title=?, guide_name=? WHERE reg_no=? AND year=?");
+    $upd->bind_param("ssssssss", $_POST['student_name'], $_POST['branch'], $_POST['section'], $_POST['domain'], $_POST['project_title'], $_POST['guide_name'], $_POST['reg_hidden'], $_POST['year_hidden']);
     if ($upd->execute()) {
         header("Location: thankyou.php?updated=true");
         exit();
@@ -53,45 +43,64 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_update'])) {
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="style.css">
-    <title>Status | Project Management</title>
+    <title>Status | VFSTR</title>
 </head>
 <body>
     <div class="background-overlay"></div>
     <div class="dashboard-wrapper">
-        <div class="glass-panel centered" style="max-width: 500px; padding: 40px; text-align: center;">
+        <div class="glass-panel centered" style="max-width: 600px; padding: 30px;">
 
             <?php if (isset($_GET['updated']) || $success): ?>
-                <h1 style="color: #00ffcc;">Success!</h1>
-                <p>Your project information has been safely recorded.</p>
-                <a href="student_dashboard.php" class="btn-gradient" style="text-decoration:none; display:inline-block; margin-top:20px;">Back to Home</a>
+                <div style="text-align: center;">
+                    <h1 style="color: #00ffcc;">Project Recorded!</h1>
+                    <p>Your details have been successfully saved to the database.</p>
+                    <a href="student_dashboard.php" class="btn-gradient" style="display:inline-block; margin-top:20px; text-decoration:none;">Back to Dashboard</a>
+                </div>
 
             <?php elseif ($is_duplicate): ?>
-                <h1 style="color: #ffcc00;">Record Exists</h1>
-                <p>Registration <strong><?php echo htmlspecialchars($student_data['reg_no']); ?></strong> has already submitted a project for <strong><?php echo htmlspecialchars($student_data['year']); ?></strong>.</p>
-                
-                <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px; text-align: left;">
-                    <p style="margin:0; font-size: 0.9em; color: #aaa;">Current Title:</p>
-                    <p style="margin:5px 0 0 0; color: #fff; font-weight: bold;"><?php echo htmlspecialchars($student_data['project_title']); ?></p>
+                <div style="text-align: center;">
+                    <h1 style="color: #ffcc00;">Existing Record Found</h1>
+                    <p>You can update your current project information below.</p>
                 </div>
 
                 <form method="POST" class="form-glass">
                     <input type="hidden" name="reg_hidden" value="<?php echo $student_data['reg_no']; ?>">
                     <input type="hidden" name="year_hidden" value="<?php echo $student_data['year']; ?>">
                     
-                    <div class="form-group" style="text-align: left;">
-                        <label>Update Project Title Only</label>
-                        <input type="text" name="new_title" required placeholder="Enter new project name...">
+                    <div class="form-group">
+                        <label>Student Name</label>
+                        <input type="text" name="student_name" value="<?php echo htmlspecialchars($student_data['student_name']); ?>" required>
                     </div>
-                    <button type="submit" name="do_update" class="btn-gradient" style="width: 100%;">Update My Project</button>
-                    <a href="student_dashboard.php" style="display:block; margin-top:15px; color:#aaa; text-decoration:none;">Cancel and Go Back</a>
+
+                    <div class="form-group">
+                        <label>Project Domain</label>
+                        <input type="text" name="domain" value="<?php echo htmlspecialchars($student_data['domain']); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Project Title</label>
+                        <input type="text" name="project_title" value="<?php echo htmlspecialchars($student_data['project_title']); ?>" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Guide</label>
+                        <select name="guide_name" required>
+                            <?php 
+                            $guides = ["Dr. K. Santhi Sri", "Rama", "Sita", "Chandu", "Mahesh", "Dhamu"];
+                            foreach($guides as $g) {
+                                $sel = ($student_data['guide_name'] == $g) ? 'selected' : '';
+                                echo "<option value='$g' $sel>$g</option>";
+                            }
+                            ?>
+                        </select>
+                    </div>
+
+                    <button type="submit" name="do_full_update" class="btn-gradient" style="width: 100%;">Save Corrected Info</button>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="student_dashboard.php" style="color: #aaa; text-decoration: none;">Cancel</a>
+                    </div>
                 </form>
-
-            <?php else: ?>
-                <h1>Error</h1>
-                <p>Something went wrong with the submission.</p>
-                <a href="student_dashboard.php" class="btn-gradient">Try Again</a>
             <?php endif; ?>
-
         </div>
     </div>
 </body>
