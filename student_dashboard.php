@@ -1,7 +1,14 @@
 <?php
 session_start();
-include('db.php'); 
-$username = $_SESSION['username'] ?? 'Student';
+include('db.php');
+
+if (!isset($_SESSION['student_reg_no'])) {
+    header('Location: index.php?view=student');
+    exit;
+}
+
+$regNo = $_SESSION['student_reg_no'];
+$username = $regNo;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -19,12 +26,13 @@ $username = $_SESSION['username'] ?? 'Student';
         <header class="top-nav">
             <div class="top-nav-left"><span class="brand-title">Department of Computer Applications - VFSTR</span></div>
             <div class="top-nav-right">
-                <span class="welcome-text">Welcome <?php echo htmlspecialchars($username); ?></span>
+                <span class="welcome-text">Welcome, <?php echo htmlspecialchars($username); ?></span>
                 <a href="logout.php" class="btn-link nav-logout">Logout</a>
             </div>
         </header>
 
         <main class="dashboard-main centered">
+            <!-- Existing project submission card kept as-is -->
             <div class="glass-panel floating">
                 <div class="app-header">
                     <h1>Project Submission</h1>
@@ -92,6 +100,45 @@ $username = $_SESSION['username'] ?? 'Student';
                     <button type="submit" name="initial_submit" class="btn-gradient">Submit Project Details</button>
                 </form>
             </div>
+
+            <!-- New: Student File Upload section -->
+            <div class="glass-panel" style="margin-top: 30px;">
+                <div class="app-header">
+                    <h2>Student File Upload</h2>
+                    <h3>Your registration number is your login ID.</h3>
+                </div>
+
+                <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="upload_reg_no">Registration Number</label>
+                        <input
+                            type="text"
+                            id="upload_reg_no"
+                            name="reg_no"
+                            required
+                            value="<?php echo htmlspecialchars($regNo); ?>"
+                            readonly
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="doc_file">Document Upload (Any format)</label>
+                        <input type="file" id="doc_file" name="doc_file">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ppt_file">PPT Upload (Any format)</label>
+                        <input type="file" id="ppt_file" name="ppt_file">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="code_file">Code Upload (Any format)</label>
+                        <input type="file" id="code_file" name="code_file">
+                    </div>
+
+                    <button type="submit" class="btn-gradient">Upload Files</button>
+                </form>
+            </div>
         </main>
     </div>
 
@@ -102,7 +149,7 @@ $username = $_SESSION['username'] ?? 'Student';
         const sectionSelect = document.getElementById('section');
         const selectedYear = yearSelect.value;
 
-        yearSelect.innerHTML = '<option value="">-- Select --</option>';
+        yearSelect.innerHTML = '<option value=\"\">-- Select --</option>';
         if (branch === 'BCA') {
             ['1st Year', '2nd Year', '3rd Year'].forEach(y => yearSelect.add(new Option(y, y)));
         } else if (branch === 'MCA') {
@@ -110,7 +157,7 @@ $username = $_SESSION['username'] ?? 'Student';
         }
         yearSelect.value = selectedYear;
 
-        sectionSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        sectionSelect.innerHTML = '<option value=\"\">-- Select Section --</option>';
         if (branch === 'BCA') {
             sectionSelect.add(new Option('A', 'A'));
         } else if (branch === 'MCA') {
