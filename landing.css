@@ -244,6 +244,7 @@ body.page-landing::before {
     flex-wrap: wrap;
     gap: clamp(16px, 3vw, 28px);
     justify-content: center;
+
     align-items: stretch;
     margin-bottom: clamp(28px, 5vw, 44px);
 }
@@ -270,6 +271,9 @@ body.page-landing::before {
 .btn-upload-files {
     border-color: rgba(0, 255, 136, 0.45) !important;
     background: rgba(0, 255, 136, 0.08) !important;
+}
+
+    margin-bottom: clamp(28px, 5vw, 44px);
 }
 
 .btn-glass {
@@ -367,6 +371,7 @@ body.page-landing::before {
 }
 
 /* ---- Login card (glassmorphism) ---- */
+
 .upload-card-wide {
     max-width: 520px;
 }
