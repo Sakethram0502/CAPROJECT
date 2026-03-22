@@ -209,6 +209,45 @@ body::before {
     text-shadow: 0 0 30px rgba(0, 102, 255, 0.5);
 }
 
+.status-hero {
+    text-align: center;
+    margin: 0;
+    padding: 40px 20px;
+}
+
+.status-hero-title {
+    font-size: 40px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary-cyan), #00ff88);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 25px rgba(0, 255, 200, 0.5);
+    animation: statusFloat 3s ease-in-out infinite, statusGlow 4s ease-in-out infinite;
+}
+
+.status-hero-subtitle {
+    margin-top: 10px;
+    font-size: 16px;
+    color: var(--text-muted);
+    animation: statusFadeIn 1.2s ease-out;
+}
+
+@keyframes statusFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+}
+
+@keyframes statusGlow {
+    0%, 100% { text-shadow: 0 0 25px rgba(0, 255, 200, 0.5); }
+    50% { text-shadow: 0 0 40px rgba(0, 255, 200, 0.9); }
+}
+
+@keyframes statusFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .app-header h2 {
     font-size: 20px;
     font-weight: 400;

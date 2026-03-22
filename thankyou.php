@@ -20,17 +20,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['initial_submit'])) {
         $is_duplicate = true;
         $student_data = $result->fetch_assoc();
     } else {
-        $sql = "INSERT INTO student_submissions (reg_no, student_name, branch, year, section, domain, project_title, guide_name) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $semester = $_POST['semester'] ?? '';
+        $sql = "INSERT INTO student_submissions (reg_no, student_name, branch, year, section, semester, domain, project_title, guide_name) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $ins = $conn->prepare($sql);
-        $ins->bind_param("ssssssss", $reg_no, $_POST['student_name'], $_POST['branch'], $year, $_POST['section'], $_POST['domain'], $_POST['project_title'], $_POST['guide_name']);
+        $ins->bind_param("sssssssss", $reg_no, $_POST['student_name'], $_POST['branch'], $year, $_POST['section'], $semester, $_POST['domain'], $_POST['project_title'], $_POST['guide_name']);
         if ($ins->execute()) { $success = true; }
     }
 }
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_full_update'])) {
-    $upd = $conn->prepare("UPDATE student_submissions SET student_name=?, branch=?, section=?, domain=?, project_title=?, guide_name=? WHERE reg_no=? AND year=?");
-    $upd->bind_param("ssssssss", $_POST['student_name'], $_POST['branch'], $_POST['section'], $_POST['domain'], $_POST['project_title'], $_POST['guide_name'], $_POST['reg_hidden'], $_POST['year_hidden']);
+    $upd = $conn->prepare("UPDATE student_submissions SET student_name=?, branch=?, section=?, semester=?, domain=?, project_title=?, guide_name=? WHERE reg_no=? AND year=?");
+    $upd->bind_param("sssssssss", $_POST['student_name'], $_POST['branch'], $_POST['section'], $_POST['semester'], $_POST['domain'], $_POST['project_title'], $_POST['guide_name'], $_POST['reg_hidden'], $_POST['year_hidden']);
     if ($upd->execute()) {
         header("Location: thankyou.php?updated=true");
         exit();
@@ -47,14 +48,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_full_update'])) {
 </head>
 <body>
     <div class="background-overlay"></div>
-    <div class="dashboard-wrapper">
-        <div class="glass-panel centered" style="max-width: 600px; padding: 30px;">
+    <div class="page-wrapper">
+        <div class="glass-panel floating" style="max-width: 600px; padding: 30px;">
 
             <?php if (isset($_GET['updated']) || $success): ?>
-                <div style="text-align: center;">
-                    <h1 style="color: #00ffcc;">Project Recorded!</h1>
-                    <p>Your details have been successfully saved to the database.</p>
-                    <a href="student_dashboard.php" class="btn-gradient" style="display:inline-block; margin-top:20px; text-decoration:none;">Back to Dashboard</a>
+                <div class="status-hero">
+                    <h1 class="status-hero-title">Project Recorded!</h1>
+                    <p class="status-hero-subtitle">Your details have been successfully saved to the database.</p>
+                    <a href="student_dashboard.php" class="btn-gradient" style="display:inline-block; margin-top:24px; text-decoration:none;">Back to Dashboard</a>
                 </div>
 
             <?php elseif ($is_duplicate): ?>
@@ -83,10 +84,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['do_full_update'])) {
                     </div>
 
                     <div class="form-group">
+                        <label>Semester</label>
+                        <select name="semester" required>
+                            <option value="">-- Select Semester --</option>
+                            <?php foreach (['I' => 'Semester I', 'II' => 'Semester II'] as $val => $label):
+                                $sel = (isset($student_data['semester']) && (string)$student_data['semester'] === $val) ? 'selected' : '';
+                            ?>
+                                <option value="<?php echo $val; ?>" <?php echo $sel; ?>><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label>Guide</label>
                         <select name="guide_name" required>
                             <?php 
-                            $guides = ["Dr. K. Santhi Sri", "Rama", "Sita", "Chandu", "Mahesh", "Dhamu"];
+                            $guides = ["Dr. K. Santhi Sri", "Gayatri", "Naga Sirisha", "Koteswarao", "Mahesh", ""];
                             foreach($guides as $g) {
                                 $sel = ($student_data['guide_name'] == $g) ? 'selected' : '';
                                 echo "<option value='$g' $sel>$g</option>";

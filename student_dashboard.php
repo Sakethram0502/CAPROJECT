@@ -75,6 +75,15 @@ $username = $regNo;
                     </div>
 
                     <div class="form-group">
+                        <label for="semester">Semester</label>
+                        <select id="semester" name="semester" required>
+                            <option value="">-- Select Semester --</option>
+                            <option value="I">Semester I</option>
+                            <option value="II">Semester II</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label for="domain">Project Domain</label>
                         <input type="text" id="domain" name="domain" required placeholder="e.g. Web Development, AI, Cyber Security">
                     </div>
@@ -98,45 +107,6 @@ $username = $regNo;
                     </div>
 
                     <button type="submit" name="initial_submit" class="btn-gradient">Submit Project Details</button>
-                </form>
-            </div>
-
-            <!-- New: Student File Upload section -->
-            <div class="glass-panel" style="margin-top: 30px;">
-                <div class="app-header">
-                    <h2>Student File Upload</h2>
-                    <h3>Your registration number is your login ID.</h3>
-                </div>
-
-                <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="upload_reg_no">Registration Number</label>
-                        <input
-                            type="text"
-                            id="upload_reg_no"
-                            name="reg_no"
-                            required
-                            value="<?php echo htmlspecialchars($regNo); ?>"
-                            readonly
-                        >
-                    </div>
-
-                    <div class="form-group">
-                        <label for="doc_file">Document Upload (Any format)</label>
-                        <input type="file" id="doc_file" name="doc_file">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="ppt_file">PPT Upload (Any format)</label>
-                        <input type="file" id="ppt_file" name="ppt_file">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="code_file">Code Upload (Any format)</label>
-                        <input type="file" id="code_file" name="code_file">
-                    </div>
-
-                    <button type="submit" class="btn-gradient">Upload Files</button>
                 </form>
             </div>
         </main>

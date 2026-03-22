@@ -31,7 +31,6 @@ $username = $_SESSION['username'] ?? 'HOD';
                 <a href="hod_dashboard.php?view=bca" class="sidebar-link">BCA</a>
                 <a href="hod_dashboard.php?view=mca" class="sidebar-link">MCA</a>
                 <a href="#" class="sidebar-link">View Staff</a>
-                <a href="#" class="sidebar-link">View Students</a>
                 <a href="#" class="sidebar-link">Download Reports</a>
             </aside>
 
@@ -52,6 +51,14 @@ $username = $_SESSION['username'] ?? 'HOD';
                         </div>
                         <div class="year-card floating">
                             <h3>BCA 2nd Year</h3>
+                            <p>Sections:</p>
+                            <div class="pill-row">
+                                <span class="pill">Section A</span>
+                                <span class="pill">Section B</span>
+                            </div>
+                        </div>
+                        <div class="year-card floating">
+                            <h3>BCA 3rd Year</h3>
                             <p>Sections:</p>
                             <div class="pill-row">
                                 <span class="pill">Section A</span>
