@@ -244,6 +244,35 @@ body.page-landing::before {
     flex-wrap: wrap;
     gap: clamp(16px, 3vw, 28px);
     justify-content: center;
+
+    align-items: stretch;
+    margin-bottom: clamp(28px, 5vw, 44px);
+}
+
+/* Student + Upload Files side by side (extra space between the two) */
+.btn-student-upload-pair {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(20px, 4vw, 40px);
+    column-gap: clamp(24px, 5vw, 48px);
+    row-gap: clamp(16px, 3vw, 24px);
+    justify-content: center;
+    align-items: stretch;
+}
+
+.btn-student-upload-pair .btn-glass {
+    min-width: clamp(110px, 16vw, 140px);
+}
+
+.btn-student-upload-pair .btn-glass + .btn-glass {
+    margin-left: clamp(8px, 2vw, 16px);
+}
+
+.btn-upload-files {
+    border-color: rgba(0, 255, 136, 0.45) !important;
+    background: rgba(0, 255, 136, 0.08) !important;
+}
+
     margin-bottom: clamp(28px, 5vw, 44px);
 }
 
@@ -342,6 +371,40 @@ body.page-landing::before {
 }
 
 /* ---- Login card (glassmorphism) ---- */
+
+.upload-card-wide {
+    max-width: 520px;
+}
+
+.upload-card-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1.25rem;
+    text-align: center;
+    margin-bottom: 8px;
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.upload-card-hint {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.65);
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.upload-summary-box {
+    margin-bottom: 18px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(0, 212, 255, 0.08);
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    font-size: 0.9rem;
+}
+
+.upload-summary-box ul {
+    margin: 8px 0 0 18px;
+    line-height: 1.6;
+}
+
 .login-card-glass {
     width: 100%;
     max-width: 420px;

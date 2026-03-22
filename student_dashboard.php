@@ -75,6 +75,15 @@ $username = $regNo;
                     </div>
 
                     <div class="form-group">
+                        <label for="semester">Semester</label>
+                        <select id="semester" name="semester" required>
+                            <option value="">-- Select Semester --</option>
+                            <option value="I">Semester I</option>
+                            <option value="II">Semester II</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
                         <label for="domain">Project Domain</label>
                         <input type="text" id="domain" name="domain" required placeholder="e.g. Web Development, AI, Cyber Security">
                     </div>
