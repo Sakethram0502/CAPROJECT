@@ -33,15 +33,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_marks'])) {
         exit();
     }
 }
-
-// 2. Fetch Students based on Sidebar Selection
+// Ensure this is exactly how your query looks:
+$base_query = "SELECT s.*, u.id AS upload_id, u.document_name, u.ppt_name, u.code_name 
+               FROM student_submissions s 
+               LEFT JOIN student_uploads u ON s.reg_no = u.reg_no 
+               WHERE s.guide_name = ?";
+               
 if ($view === 'bca' || $view === 'mca') {
-    $query = "SELECT * FROM student_submissions WHERE guide_name = ? AND branch = ?";
+    $query = $base_query . " AND s.branch = ?";
     $stmt = $conn->prepare($query);
     $stmt->bind_param("ss", $username, $view);
 } else {
-    $query = "SELECT * FROM student_submissions WHERE guide_name = ?";
-    $stmt = $conn->prepare($query);
+    $stmt = $conn->prepare($base_query);
     $stmt->bind_param("s", $username);
 }
 $stmt->execute();
@@ -115,13 +118,9 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
                         <thead>
                             <tr>
                                 <th>Reg No</th>
-                                <th>Student & Domain</th>
-                                <th>R1</th>
-                                <th>R2</th>
-                                <th>R3</th>
-                                <th>R4</th>
-                                <th>R5</th>
-                                <th>Action</th>
+<th>Student & Domain</th>
+<th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th>
+<th>Submission</th> <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -138,7 +137,20 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
                                     <td title="Feedback: <?php echo htmlspecialchars($row['r3_notes'] ?? 'None'); ?>"><?php echo $row['r3_marks'] ?: '-'; ?></td>
                                     <td title="Feedback: <?php echo htmlspecialchars($row['r4_notes'] ?? 'None'); ?>"><?php echo $row['r4_marks'] ?: '-'; ?></td>
                                     <td title="Feedback: <?php echo htmlspecialchars($row['r5_notes'] ?? 'None'); ?>"><?php echo $row['r5_marks'] ?: '-'; ?></td>
-                                    <td>
+
+<td>
+    <?php if (!empty($row['upload_id'])): ?>
+        <button type="button" class="btn-view" 
+                style="background: rgba(0, 212, 255, 0.2); color: #00d4ff; border: 1px solid #00d4ff; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;"
+                onclick="downloadPrompt('<?php echo $row['upload_id']; ?>', '<?php echo $row['document_name'] ? 1 : 0; ?>', '<?php echo $row['ppt_name'] ? 1 : 0; ?>', '<?php echo $row['code_name'] ? 1 : 0; ?>')">
+            View Files
+        </button>
+    <?php else: ?>
+        <span style="opacity: 0.4; font-size: 0.8em;">Pending</span>
+    <?php endif; ?>
+</td>
+<td>
+   
                                         <button class="btn-view btn-update" 
                                             data-reg="<?php echo $row['reg_no']; ?>" 
                                             data-name="<?php echo $row['student_name']; ?>"
@@ -216,6 +228,27 @@ $students = $result->fetch_all(MYSQLI_ASSOC);
         });
 
         window.onclick = (e) => { if (e.target == modal) modal.classList.remove('open'); }
+        function downloadPrompt(id, hasDoc, hasPpt, hasCode) {
+    let msg = "Select a file to download:\n";
+    if(parseInt(hasDoc)) msg += "1. Documentation\n";
+    if(parseInt(hasPpt)) msg += "2. PPT\n";
+    if(parseInt(hasCode)) msg += "3. Source Code\n";
+    
+    const choice = prompt(msg + "\nEnter file number:");
+    
+    // Change "download.php" to "download_file.php" here
+    const scriptName = "download_file.php"; 
+    
+    if (choice === "1" && parseInt(hasDoc)) {
+        window.location.href = scriptName + "?id=" + id + "&type=document";
+    } else if (choice === "2" && parseInt(hasPpt)) {
+        window.location.href = scriptName + "?id=" + id + "&type=ppt";
+    } else if (choice === "3" && parseInt(hasCode)) {
+        window.location.href = scriptName + "?id=" + id + "&type=code";
+    } else if (choice !== null) {
+        alert("Invalid selection or file not available.");
+    }
+}
     </script>
 </body>
 </html>

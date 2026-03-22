@@ -238,34 +238,25 @@ body.page-landing::before {
     100% { transform: translateX(-50%); }
 }
 
-/* ---- 3. Three buttons: center, glassmorphism, neon, float, hover scale, ripple, shadow ---- */
+/* ---- 3. Button Groups ---- */
 .btn-group-center {
     display: flex;
     flex-wrap: wrap;
     gap: clamp(16px, 3vw, 28px);
     justify-content: center;
-
     align-items: stretch;
     margin-bottom: clamp(28px, 5vw, 44px);
+    position: relative;
+    z-index: 2;
 }
 
-/* Student + Upload Files side by side (extra space between the two) */
+/* Student + Upload Files side by side */
 .btn-student-upload-pair {
     display: flex;
     flex-wrap: wrap;
-    gap: clamp(20px, 4vw, 40px);
-    column-gap: clamp(24px, 5vw, 48px);
-    row-gap: clamp(16px, 3vw, 24px);
+    gap: clamp(12px, 2vw, 20px);
     justify-content: center;
     align-items: stretch;
-}
-
-.btn-student-upload-pair .btn-glass {
-    min-width: clamp(110px, 16vw, 140px);
-}
-
-.btn-student-upload-pair .btn-glass + .btn-glass {
-    margin-left: clamp(8px, 2vw, 16px);
 }
 
 .btn-upload-files {
@@ -273,18 +264,22 @@ body.page-landing::before {
     background: rgba(0, 255, 136, 0.08) !important;
 }
 
-    margin-bottom: clamp(28px, 5vw, 44px);
+.btn-upload-files:hover {
+    border-color: rgba(0, 255, 136, 0.8) !important;
+    box-shadow: 0 0 35px rgba(0, 255, 136, 0.3) !important;
 }
 
+/* ---- 4. Button Base Styling ---- */
 .btn-glass {
     position: relative;
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     min-width: clamp(120px, 18vw, 160px);
-    padding: clamp(20px, 3vw, 28px) clamp(24px, 4vw, 36px);
+    padding: clamp(16px, 2.5vw, 24px);
     font-family: 'Orbitron', sans-serif;
-    font-size: clamp(1rem, 2.2vw, 1.35rem);
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
     font-weight: 700;
     text-decoration: none;
     color: #fff;
@@ -294,11 +289,8 @@ body.page-landing::before {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 2px solid rgba(0, 212, 255, 0.4);
-    box-shadow: 
-        0 8px 32px rgba(0, 0, 0, 0.2),
-        0 0 20px rgba(0, 212, 255, 0.15),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     animation: btnFloat 4s ease-in-out infinite;
 }
 

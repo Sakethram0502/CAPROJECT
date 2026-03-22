@@ -138,40 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </a>
             </div>
         </div>
-
-        <!-- 2. Scrolling marquee -->
-        <div class="marquee-wrap">
-            <div class="marquee-inner">
-                <span class="marquee-text">Welcome to the Department of Computer Application – VFSTR</span>
-                <span class="marquee-text" aria-hidden="true">Welcome to the Department of Computer Application – VFSTR</span>
-            </div>
-        </div>
-
-        <!-- 3. Three large animated buttons (center) -->
-        <div class="btn-group-center">
-            <a href="?view=hod" class="btn-glass <?php echo $view === 'hod' ? 'active' : ''; ?>" data-role="hod">
-                <span class="btn-glass-inner">
-                    <span class="btn-label">HOD</span>
-                    <span class="btn-sub">Login</span>
-                </span>
-                <span class="btn-ripple"></span>
-            </a>
-            <a href="?view=staff" class="btn-glass <?php echo $view === 'staff' ? 'active' : ''; ?>" data-role="staff">
-                <span class="btn-glass-inner">
-                    <span class="btn-label">Staff</span>
-                    <span class="btn-sub">Login</span>
-                </span>
-                <span class="btn-ripple"></span>
-            </a>
-            <a href="?view=student" class="btn-glass <?php echo $view === 'student' ? 'active' : ''; ?>" data-role="student">
-                <span class="btn-glass-inner">
-                    <span class="btn-label">Student</span>
-                    <span class="btn-sub">Login</span>
-                </span>
-                <span class="btn-ripple"></span>
-            </a>
-        </div>
-
         <!-- Login form card (shows when HOD / Staff / Student selected) -->
         <?php if ($view === 'hod' || $view === 'staff' || $view === 'student'): ?>
         <div class="login-card-glass">

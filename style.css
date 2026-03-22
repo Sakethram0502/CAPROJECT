@@ -356,18 +356,31 @@ body::before {
     font-size: 14px;
 }
 
+/* Modified Form Control Styles */
 .form-group input[type="text"],
 .form-group input[type="date"],
+.form-group input[type="password"],
 .form-group select,
 .form-group textarea {
     padding: 12px 16px;
-    background: rgba(255, 255, 255, 0.1);
+    /* Use a slightly darker background to help text pop */
+    background: rgba(10, 14, 39, 0.5); 
     border: 1px solid var(--glass-border);
     border-radius: 10px;
-    color: var(--text-light);
+    color: var(--text-light) !important;
     font-size: 16px;
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
+    
+    /* FIX: Tells the browser to use a dark system theme for the dropdown list */
+    color-scheme: dark; 
+}
+
+/* FIX: Specific styling for the actual options inside the dropdown */
+.form-group select option {
+    background-color: #1a1e3b !important; /* Solid dark color matching your background */
+    color: #ffffff !important;
+    padding: 12px;
 }
 
 .form-group input:focus,
@@ -376,7 +389,8 @@ body::before {
     outline: none;
     border-color: var(--primary-cyan);
     box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-    background: rgba(255, 255, 255, 0.15);
+    /* Keep it dark on focus too */
+    background: rgba(10, 14, 39, 0.7); 
 }
 
 .form-group textarea {
