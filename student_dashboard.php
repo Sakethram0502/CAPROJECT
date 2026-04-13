@@ -8,175 +8,291 @@ if (!isset($_SESSION['student_reg_no'])) {
 }
 
 $regNo = $_SESSION['student_reg_no'];
-$username = $regNo;
+
+// Fetch existing submissions for pre-fill and duplicate check
+$stmt = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no = ? ORDER BY year, semester ASC");
+$stmt->bind_param("s", $regNo);
+$stmt->execute();
+$existing = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+
+// Map by "year|semester" for duplicate check e.g. "1|I", "2|II"
+$existingByKey = [];
+foreach ($existing as $row) {
+    $existingByKey[$row['year'] . '|' . $row['semester']] = $row;
+}
+
+// Pre-fill from latest record
+$prefill = !empty($existing) ? $existing[count($existing)-1] : [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard | Project Management System</title>
+    <title>Student Dashboard | Project Management</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        .alert-warn{ background:rgba(255,204,0,0.1); border:1px solid #ffcc00; color:#ffcc00;
+                     border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.88em; display:none; }
+        .file-hint { font-size:0.75em; color:#aaa; margin-top:4px; }
+        select:disabled { opacity:0.45; cursor:not-allowed; }
+    </style>
 </head>
 <body>
-    <div class="background-overlay"></div>
-    <div class="water-animation"></div>
+<div class="background-overlay"></div>
+<div class="water-animation"></div>
 
-    <div class="dashboard-wrapper">
-        <header class="top-nav">
-            <div class="top-nav-left"><span class="brand-title">Department of Computer Applications - VFSTR</span></div>
-            <div class="top-nav-right">
-                <span class="welcome-text">Welcome, <?php echo htmlspecialchars($username); ?></span>
-                <a href="logout.php" class="btn-link nav-logout">Logout</a>
+<div class="dashboard-wrapper">
+    <header class="top-nav">
+        <div class="top-nav-left"><span class="brand-title">Department of Computer Applications — VFSTR</span></div>
+        <div class="top-nav-right">
+            <span class="welcome-text">Welcome, <?php echo htmlspecialchars($regNo); ?></span>
+            <a href="logout.php" class="btn-link nav-logout">Logout</a>
+        </div>
+    </header>
+
+    <main class="dashboard-main centered">
+        <!-- ── PROJECT DETAILS FORM ──────────────────────────────── -->
+        <div class="glass-panel floating">
+            <div class="app-header">
+                <h1>Submit / Update Project Details</h1>
+                <p style="color:#aaa;font-size:0.84em;">
+                    Select Year first — Semester options will update automatically.
+                    If a record exists for that semester, you will see an update screen.
+                </p>
             </div>
-        </header>
 
-        <main class="dashboard-main centered">
-            <!-- Existing project submission card kept as-is -->
-            <div class="glass-panel floating">
-                <div class="app-header">
-                    <h1>Project Submission</h1>
-                    <p>Enter your project details for review registration.</p>
+            <form method="post" action="thankyou.php" class="form-glass">
+                <input type="hidden" name="initial_submit" value="1">
+
+                <!-- Reg No -->
+                <div class="form-group">
+                    <label>Registration Number</label>
+                    <input type="text" name="reg_no"
+                           value="<?php echo htmlspecialchars($regNo); ?>"
+                           readonly style="opacity:0.7;">
                 </div>
 
-                <form method="post" action="thankyou.php" class="form-glass">
-                    <div class="form-group">
-                        <label for="reg_no">Registration Number</label>
-                        <input type="text" id="reg_no" name="reg_no" required placeholder="e.g. 231FA04000">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="student_name">Student Name</label>
-                        <input type="text" id="student_name" name="student_name" required placeholder="Your Full Name">
-                    </div>
-
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label for="branch">Branch</label>
-                            <select id="branch" name="branch" required onchange="updateOptions()">
-                                <option value="">-- Select --</option>
-                                <option value="BCA">BCA</option>
-                                <option value="MCA">MCA</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label for="year">Year</label>
-                            <select id="year" name="year" required onchange="updateOptions()">
-                                <option value="">-- Select --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="section">Section</label>
-                        <select id="section" name="section" required>
-                            <option value="">-- Select Section --</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="semester">Semester</label>
-                        <select id="semester" name="semester" required>
-                            <option value="">-- Select Semester --</option>
-                            <option value="I">Semester I</option>
-                            <option value="II">Semester II</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="domain">Project Domain</label>
-                        <input type="text" id="domain" name="domain" required placeholder="e.g. Web Development, AI, Cyber Security">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="project_title">Project Title</label>
-                        <input type="text" id="project_title" name="project_title" required placeholder="Full Project Name">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="guide_name">Supervisor / Guide Name</label>
-                        <select id="guide_name" name="guide_name" required>
-                            <option value="">-- Select Guide --</option>
-                            <option value="Dr. K. Santhi Sri">Dr. K. Santhi Sri</option>
-                            <option value="Rama">Rama</option>
-                            <option value="Sita">Sita</option>
-                            <option value="Chandu">Chandu</option>
-                            <option value="Mahesh">Mahesh</option>
-                            <option value="Dhamu">Dhamu</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" name="initial_submit" class="btn-gradient">Submit Project Details</button>
-                </form>
-            </div>
-
-            <!-- New: Student File Upload section -->
-            <div class="glass-panel" style="margin-top: 30px;">
-                <div class="app-header">
-                    <h2>Student File Upload</h2>
-                    <h3>Your registration number is your login ID.</h3>
+                <!-- Student Name -->
+                <div class="form-group">
+                    <label for="student_name">Student Name</label>
+                    <input type="text" id="student_name" name="student_name" required
+                           placeholder="Your Full Name"
+                           value="<?php echo htmlspecialchars($prefill['student_name'] ?? ''); ?>">
                 </div>
 
-                <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data">
-                    <div class="form-group">
-                        <label for="upload_reg_no">Registration Number</label>
-                        <input
-                            type="text"
-                            id="upload_reg_no"
-                            name="reg_no"
-                            required
-                            value="<?php echo htmlspecialchars($regNo); ?>"
-                            readonly
-                        >
+                <!-- Branch + Year -->
+                <div style="display:flex;gap:14px;">
+                    <div class="form-group" style="flex:1;">
+                        <label for="branch">Branch</label>
+                        <select id="branch" name="branch" required>
+                            <option value="">-- Select --</option>
+                            <option value="BCA" <?php echo ($prefill['branch']??'')==='BCA'?'selected':''; ?>>BCA</option>
+                            <option value="MCA" <?php echo ($prefill['branch']??'')==='MCA'||empty($prefill)?'selected':''; ?>>MCA</option>
+                        </select>
                     </div>
-
-                    <div class="form-group">
-                        <label for="doc_file">Document Upload (Any format)</label>
-                        <input type="file" id="doc_file" name="doc_file">
+                    <div class="form-group" style="flex:1;">
+                        <label for="year">Year</label>
+                        <select id="year" name="year" required onchange="updateSemester()">
+                            <option value="">-- Select Year --</option>
+                            <option value="1" <?php echo ($prefill['year']??'')==='1'?'selected':''; ?>>Year 1</option>
+                            <option value="2" <?php echo ($prefill['year']??'')==='2'?'selected':''; ?>>Year 2</option>
+                        </select>
                     </div>
+                </div>
 
-                    <div class="form-group">
-                        <label for="ppt_file">PPT Upload (Any format)</label>
-                        <input type="file" id="ppt_file" name="ppt_file">
-                    </div>
+                <!-- Section -->
+                <div class="form-group">
+                    <label for="section">Section</label>
+                    <select id="section" name="section" required>
+                        <option value="">-- Select Section --</option>
+                        <option value="A" <?php echo ($prefill['section']??'')==='A'?'selected':''; ?>>Section A</option>
+                        <option value="B" <?php echo ($prefill['section']??'')==='B'?'selected':''; ?>>Section B</option>
+                    </select>
+                </div>
 
-                    <div class="form-group">
-                        <label for="code_file">Code Upload (Any format)</label>
-                        <input type="file" id="code_file" name="code_file">
-                    </div>
+                <!-- Semester — populated by JS based on Year selection -->
+                <div class="form-group">
+                    <label for="semester">Semester</label>
+                    <select id="semester" name="semester" required onchange="checkDuplicate()" disabled>
+                        <option value="">-- Select Year first --</option>
+                    </select>
+                </div>
 
-                    <button type="submit" class="btn-gradient">Upload Files</button>
-                </form>
+                <!-- Duplicate warning -->
+                <div id="dup-warn" class="alert-warn">
+                    ⚠️ You already submitted a project for this semester.
+                    Submitting will open the <strong>Update</strong> screen with your existing details pre-filled.
+                </div>
+
+                <!-- Domain -->
+                <div class="form-group">
+                    <label for="domain">Project Domain</label>
+                    <input type="text" id="domain" name="domain" required
+                           placeholder="e.g. Machine Learning, Web Dev, Cyber Security">
+                </div>
+
+                <!-- Project Title -->
+                <div class="form-group">
+                    <label for="project_title">Project Title</label>
+                    <input type="text" id="project_title" name="project_title" required
+                           placeholder="Full project name">
+                </div>
+
+                <!-- Guide -->
+                <div class="form-group">
+                    <label for="guide_name">Project Guide</label>
+                    <select id="guide_name" name="guide_name" required>
+                        <option value="">-- Select Guide --</option>
+                        <?php
+                        $guides = [
+                            'Dr. K. Gayatri',
+                            'Dr. K. Santhi Sri',
+                            'Dr. M. Srikanth Yadav',
+                            'Dr. N. Veeranjaneyulu',
+                            'Dr. R.S. Padma Priya',
+                            'Dr. Siva Koteswararao Chinnam',
+                            'Mrs. R. Swathika',
+                            'R. Naga Sirisha',
+                        ];
+                        foreach ($guides as $g):
+                            $sel = ($prefill['guide_name'] ?? '') === $g ? 'selected' : '';
+                        ?>
+                        <option value="<?php echo $g; ?>" <?php echo $sel; ?>><?php echo $g; ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-gradient" style="width:100%;">Submit / Update Project</button>
+            </form>
+        </div>
+
+        <!-- ── FILE UPLOAD ────────────────────────────────────────── -->
+        <div class="glass-panel" style="margin-top:28px;">
+            <div class="app-header">
+                <h2>Upload Project Files</h2>
+                <p style="color:#aaa;font-size:0.84em;">Select the year and semester you are uploading for, then attach your files.</p>
             </div>
-        </main>
-    </div>
 
-    <script>
-    function updateOptions() {
-        const branch = document.getElementById('branch').value;
-        const yearSelect = document.getElementById('year');
-        const sectionSelect = document.getElementById('section');
-        const selectedYear = yearSelect.value;
+            <?php if (!empty($_SESSION['upload_flash'])): ?>
+                <div style="padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:0.88em;
+                    <?php echo strpos($_SESSION['upload_flash'],'success')!==false||strpos($_SESSION['upload_flash'],'Success')!==false
+                        ? 'background:rgba(0,255,136,0.1);border:1px solid #00ff88;color:#00ff88;'
+                        : 'background:rgba(255,80,80,0.1);border:1px solid #ff5050;color:#ff5050;'; ?>">
+                    <?php echo htmlspecialchars($_SESSION['upload_flash']); unset($_SESSION['upload_flash']); ?>
+                </div>
+            <?php endif; ?>
 
-        yearSelect.innerHTML = '<option value=\"\">-- Select --</option>';
-        if (branch === 'BCA') {
-            ['1st Year', '2nd Year', '3rd Year'].forEach(y => yearSelect.add(new Option(y, y)));
-        } else if (branch === 'MCA') {
-            ['1st Year', '2nd Year'].forEach(y => yearSelect.add(new Option(y, y)));
-        }
-        yearSelect.value = selectedYear;
+            <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data">
 
-        sectionSelect.innerHTML = '<option value=\"\">-- Select Section --</option>';
-        if (branch === 'BCA') {
-            sectionSelect.add(new Option('A', 'A'));
-        } else if (branch === 'MCA') {
-            if (yearSelect.value === '1st Year') {
-                sectionSelect.add(new Option('A', 'A'));
-            } else if (yearSelect.value === '2nd Year') {
-                ['A', 'B'].forEach(s => sectionSelect.add(new Option(s, s)));
-            }
-        }
+                <!-- Hidden fields the upload script needs -->
+                <input type="hidden" name="reg_no"   value="<?php echo htmlspecialchars($regNo); ?>">
+                <input type="hidden" name="branch"   value="<?php echo htmlspecialchars($prefill['branch'] ?? 'MCA'); ?>">
+                <input type="hidden" name="section"  value="<?php echo htmlspecialchars($prefill['section'] ?? ''); ?>">
+
+                <!-- Year + Semester visible to student -->
+                <div style="display:flex;gap:14px;">
+                    <div class="form-group" style="flex:1;">
+                        <label for="ul_year">Year</label>
+                        <select id="ul_year" name="year" required onchange="updateUploadSem()">
+                            <option value="">-- Select --</option>
+                            <option value="1">Year 1</option>
+                            <option value="2">Year 2</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label for="ul_sem">Semester</label>
+                        <select id="ul_sem" name="semester" required disabled>
+                            <option value="">-- Select Year first --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Files -->
+                <div class="form-group">
+                    <label for="doc_file">Document</label>
+                    <input type="file" id="doc_file" name="doc_file" accept=".pdf,.doc,.docx">
+                    <div class="file-hint">PDF, DOC, DOCX only</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="ppt_file">Presentation</label>
+                    <input type="file" id="ppt_file" name="ppt_file" accept=".ppt,.pptx">
+                    <div class="file-hint">PPT, PPTX only</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="code_file">Source Code / Report</label>
+                    <input type="file" id="code_file" name="code_file" accept=".pdf,.doc,.docx">
+                    <div class="file-hint">PDF, DOC, DOCX only</div>
+                </div>
+
+                <button type="submit" class="btn-gradient" style="width:100%;">Upload Files</button>
+            </form>
+        </div>
+
+    </main>
+</div>
+
+<script>
+// Existing submissions keyed by "year|semester"
+const submitted = <?php echo json_encode(array_keys($existingByKey)); ?>;
+
+function updateSemester() {
+    const year    = document.getElementById('year').value;
+    const semSel  = document.getElementById('semester');
+    const dupWarn = document.getElementById('dup-warn');
+
+    // Reset
+    semSel.innerHTML = '';
+    semSel.disabled  = true;
+    dupWarn.style.display = 'none';
+
+    if (!year) {
+        semSel.add(new Option('-- Select Year first --', ''));
+        return;
     }
-    </script>
+
+    // Add Semester I and II for the chosen year
+    semSel.add(new Option('-- Select Semester --', ''));
+    ['I', 'II'].forEach(function(s) {
+        const key    = year + '|' + s;
+        const exists = submitted.includes(key);
+        const label  = 'Semester ' + s + (exists ? '  ✓ (Already submitted — will update)' : '');
+        const opt    = new Option(label, s);
+        if (exists) opt.setAttribute('data-exists', '1');
+        semSel.add(opt);
+    });
+
+    semSel.disabled = false;
+}
+
+function checkDuplicate() {
+    const year    = document.getElementById('year').value;
+    const semSel  = document.getElementById('semester');
+    const opt     = semSel.options[semSel.selectedIndex];
+    const dupWarn = document.getElementById('dup-warn');
+    dupWarn.style.display = (opt && opt.getAttribute('data-exists') === '1') ? 'block' : 'none';
+}
+
+// On page load: if year is pre-filled, populate semester dropdown
+window.addEventListener('DOMContentLoaded', function() {
+    const yr = document.getElementById('year').value;
+    if (yr) updateSemester();
+});
+
+// Upload form semester dropdown
+function updateUploadSem() {
+    const year   = document.getElementById('ul_year').value;
+    const semSel = document.getElementById('ul_sem');
+    semSel.innerHTML = '';
+    semSel.disabled  = true;
+    if (!year) { semSel.add(new Option('-- Select Year first --', '')); return; }
+    semSel.add(new Option('-- Select Semester --', ''));
+    semSel.add(new Option('Semester I',  'I'));
+    semSel.add(new Option('Semester II', 'II'));
+    semSel.disabled = false;
+}
+</script>
 </body>
 </html>
