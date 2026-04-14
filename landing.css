@@ -68,6 +68,11 @@ body.page-landing::before {
 /* Logo: top left corner, fixed (does not scroll) */
 .landing-logo {
     position: fixed;
+
+
+    top: 100;
+    left: 100;
+
     z-index: 10;
     padding: clamp(12px, 2vw, 20px);
 
@@ -764,6 +769,7 @@ body.page-landing::before {
     }
 }
 
+
 /* ============================================================
    FINAL THEME OVERRIDES (lock "first screenshot" look)
    Dark premium UI + white text for ALL landing states.
@@ -880,3 +886,4 @@ body.page-landing select option {
     background-color: #0c1023 !important;
     color: #ffffff !important;
 }
+
