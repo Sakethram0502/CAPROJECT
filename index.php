@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <div class="landing-logo">
-        <img src="logo.png" alt="Vignan's Foundation for Science, Technology & Research" class="landing-logo-img">
+        <img src="vignan-logo.png" alt="Vignan's Foundation for Science, Technology & Research" class="landing-logo-img">
     </div>
 
     <main class="landing-main">
@@ -176,6 +176,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
         </div>
         <?php endif; ?>
+
+        <section class="landing-stats" aria-label="Department highlights">
+            <div class="landing-stats-inner">
+                <div class="stat-item">
+                    <div class="stat-value">60+</div>
+                    <div class="stat-label">Programs</div>
+                </div>
+                <div class="stat-divider" aria-hidden="true"></div>
+                <div class="stat-item">
+                    <div class="stat-value">835+</div>
+                    <div class="stat-label">Faculty</div>
+                </div>
+                <div class="stat-divider" aria-hidden="true"></div>
+                <div class="stat-item">
+                    <div class="stat-value">333+</div>
+                    <div class="stat-label">Students</div>
+                </div>
+                <div class="stat-divider" aria-hidden="true"></div>
+                <div class="stat-item">
+                    <div class="stat-value">85%</div>
+                    <div class="stat-label">Placements</div>
+                </div>
+            </div>
+            <div class="landing-stats-orbs" aria-hidden="true">
+                <span class="orb o1"></span>
+                <span class="orb o2"></span>
+                <span class="orb o3"></span>
+            </div>
+        </section>
     </main>
 
     <script src="landing.js"></script>
