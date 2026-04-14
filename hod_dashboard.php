@@ -31,6 +31,13 @@ $view     = $_GET['view'] ?? 'overview';
         .back-link { display:inline-block; margin-bottom:15px; color:#00d4ff; text-decoration:none; font-size:0.9em; }
         .pill-link { text-decoration:none; color:inherit; }
         .pill-link:hover .pill { background:rgba(0,212,255,0.4); border-color:#00d4ff; }
+
+        .staff-profile { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.10); }
+        .staff-profile img { width: 100%; height: 170px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); }
+        .staff-profile .profile-title { margin: 10px 0 6px; color: #00d4ff; font-weight: 700; font-size: 0.85em; letter-spacing: 0.06em; text-transform: uppercase; }
+        .staff-profile .profile-name { margin: 0; color: #fff; font-weight: 700; font-size: 0.92em; }
+        .staff-profile .profile-role { margin: 2px 0 10px; color: rgba(255,255,255,0.75); font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; }
+        .staff-profile .profile-meta { margin: 0; color: rgba(255,255,255,0.82); font-size: 0.82em; line-height: 1.5; word-break: break-word; }
     </style>
 </head>
 <body>
@@ -182,6 +189,65 @@ $view     = $_GET['view'] ?? 'overview';
                     'Mrs. R. Swathika',
                     'R. Naga Sirisha',
                 ];
+
+                $staff_profiles = [
+                    'Dr. K. Gayatri' => [
+                        'full_name' => 'Dr Gayatri Ketepalli',
+                        'role'      => 'Assistant Professor',
+                        'phone'     => '8555041186',
+                        'email'     => 'gk_ca@vignan.ac.in',
+                        'image'     => 'staff-gayatri.png',
+                    ],
+                    'Dr. K. Santhi Sri' => [
+                        'full_name' => 'Dr Kurra Santhi Sri',
+                        'role'      => 'Professor',
+                        'phone'     => '9297105269',
+                        'email'     => 'drkss_ca@vignan.ac.in',
+                        'image'     => 'staff-santhi-sri.png',
+                    ],
+                    'Dr. M. Srikanth Yadav' => [
+                        'full_name' => 'Dr Srikanth Yadav M',
+                        'role'      => 'Associate Professor',
+                        'phone'     => '8121827423',
+                        'email'     => 'sym_it@vignan.ac.in',
+                        'image'     => 'staff-srikanth-yadav.png',
+                    ],
+                    'Dr. N. Veeranjaneyulu' => [
+                        'full_name' => 'Dr N. Veeranjaneyulu',
+                        'role'      => 'Professor',
+                        'phone'     => '9347162038',
+                        'email'     => 'drnvn_it@vignan.ac.in',
+                        'image'     => 'staff-veeranjaneyulu.png',
+                    ],
+                    'Dr. R.S. Padma Priya' => [
+                        'full_name' => 'Dr R S Padma Priya',
+                        'role'      => 'Associate Professor',
+                        'phone'     => '8056582747',
+                        'email'     => 'drpprs_ca@vignan.ac.in',
+                        'image'     => 'staff-padma-priya.png',
+                    ],
+                    'Dr. Siva Koteswararao Chinnam' => [
+                        'full_name' => 'Dr Siva Koteswararao Chinnam',
+                        'role'      => 'Associate Professor',
+                        'phone'     => '9440372374',
+                        'email'     => 'drchskr_ca@vignan.ac.in',
+                        'image'     => 'staff-siva-koteswararao.png',
+                    ],
+                    'Mrs. R. Swathika' => [
+                        'full_name' => 'Mrs R Swathika',
+                        'role'      => 'Assistant Professor',
+                        'phone'     => '0',
+                        'email'     => 'rs_ca@vignan.ac.in',
+                        'image'     => 'staff-swathika.png',
+                    ],
+                    'R. Naga Sirisha' => [
+                        'full_name' => 'Mrs R Naga sirisha',
+                        'role'      => 'Assistant Professor',
+                        'phone'     => '9494852495',
+                        'email'     => 'rns_it_tra@vignan.ac.in',
+                        'image'     => 'staff-naga-sirisha.png',
+                    ],
+                ];
             ?>
                 <h2 class="section-heading">Staff — Project Guides</h2>
                 <p class="sub-heading">Click a card to view assigned students</p>
@@ -198,6 +264,18 @@ $view     = $_GET['view'] ?? 'overview';
                             <h4><?php echo htmlspecialchars($name); ?></h4>
                             <div class="count"><?php echo $cnt; ?></div>
                             <div class="label">students assigned</div>
+
+                            <?php if (isset($staff_profiles[$name])): ?>
+                                <?php $p = $staff_profiles[$name]; ?>
+                                <div class="staff-profile">
+                                    <img src="<?php echo htmlspecialchars($p['image']); ?>" alt="<?php echo htmlspecialchars($p['full_name']); ?>">
+                                    <div class="profile-title">Profile</div>
+                                    <p class="profile-name"><?php echo htmlspecialchars($p['full_name']); ?></p>
+                                    <p class="profile-role"><?php echo htmlspecialchars($p['role']); ?></p>
+                                    <p class="profile-meta"><strong>PH:</strong> <?php echo htmlspecialchars($p['phone']); ?></p>
+                                    <p class="profile-meta"><strong>Email:</strong> <?php echo htmlspecialchars($p['email']); ?></p>
+                                </div>
+                            <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
                 </div>

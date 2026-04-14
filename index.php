@@ -185,7 +185,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="stat-divider" aria-hidden="true"></div>
                 <div class="stat-item">
-                    <div class="stat-value">835+</div>
+                    <div class="stat-value">25+</div>
                     <div class="stat-label">Faculty</div>
                 </div>
                 <div class="stat-divider" aria-hidden="true"></div>
