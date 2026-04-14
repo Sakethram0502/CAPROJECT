@@ -68,23 +68,28 @@ body.page-landing::before {
 /* Logo: top left corner, fixed (does not scroll) */
 .landing-logo {
     position: fixed;
+
+
     top: 100;
     left: 100;
+
     z-index: 10;
-    padding: clamp(12px, 2vw, 20px); /* slightly bigger padding */
+    padding: clamp(12px, 2vw, 20px);
+
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
+
+    border: none;              /* ❌ remove border */
+    box-shadow: none;          /* ❌ remove shadow */
     border-bottom-right-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
 }
 
 .landing-logo-img {
     display: block;
-    height: clamp(70px, 12vw, 110px);  /* increased logo height */
+    height: clamp(70px, 12vw, 110px);
     width: auto;
-    max-width: 320px;                  /* increased max width */
+    max-width: 800px;
     object-fit: contain;
 }
 /* ---- 4. Futuristic animated background ---- */
@@ -763,3 +768,122 @@ body.page-landing::before {
         animation: none !important;
     }
 }
+
+
+/* ============================================================
+   FINAL THEME OVERRIDES (lock "first screenshot" look)
+   Dark premium UI + white text for ALL landing states.
+   ============================================================ */
+body.page-landing {
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
+body.page-landing,
+body.page-landing a,
+body.page-landing label,
+body.page-landing input,
+body.page-landing select,
+body.page-landing button,
+body.page-landing p,
+body.page-landing span,
+body.page-landing h1,
+body.page-landing h2,
+body.page-landing h3,
+body.page-landing h4,
+body.page-landing h5,
+body.page-landing h6 {
+    color: rgba(255, 255, 255, 0.95) !important;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.65) !important;
+}
+
+body.page-landing .bg-futuristic::after {
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.14) 0%,
+        rgba(0, 0, 0, 0.08) 55%,
+        rgba(0, 0, 0, 0.22) 100%
+    ) !important;
+}
+
+/* Glossy glass surfaces (not too dark) */
+body.page-landing .marquee-wrap,
+body.page-landing .btn-glass,
+body.page-landing .login-card-glass,
+body.page-landing .landing-stats {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.16) 0%,
+        rgba(255, 255, 255, 0.10) 100%
+    ) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    box-shadow:
+        0 22px 60px rgba(0, 0, 0, 0.35),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+    backdrop-filter: blur(22px) saturate(120%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(120%) !important;
+}
+
+body.page-landing .marquee-wrap::before,
+body.page-landing .btn-glass::before,
+body.page-landing .login-card-glass::before,
+body.page-landing .landing-stats::before {
+    opacity: 0.9 !important;
+}
+
+body.page-landing .btn-glass .btn-sub,
+body.page-landing .stat-label {
+    color: #0b0f1a !important;
+    text-shadow: 0 2px 12px rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Title + marquee text should be black (as requested) */
+body.page-landing .title-text,
+body.page-landing .marquee-text {
+    color: #0b0f1a !important;
+    -webkit-text-fill-color: #0b0f1a !important;
+    text-shadow: 0 2px 14px rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Give the marquee a slightly lighter glass so black text reads well */
+body.page-landing .marquee-wrap {
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.34) 0%,
+        rgba(255, 255, 255, 0.22) 100%
+    ) !important;
+}
+
+/* Optional subtle glass behind title (improves readability on photo) */
+body.page-landing .title-main {
+    padding: 10px 14px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.22);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
+}
+
+body.page-landing .stat-value {
+    color: #0b0f1a !important;
+    text-shadow: 0 2px 14px rgba(255, 255, 255, 0.75) !important;
+}
+
+/* Inputs */
+body.page-landing .login-card-glass input[type="text"],
+body.page-landing .login-card-glass input[type="password"],
+body.page-landing .login-card-glass select {
+    background: rgba(0, 0, 0, 0.28) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+    color: #ffffff !important;
+}
+
+body.page-landing .login-card-glass input::placeholder {
+    color: rgba(255, 255, 255, 0.82) !important;
+}
+
+body.page-landing select option {
+    background-color: #0c1023 !important;
+    color: #ffffff !important;
+}
+
