@@ -46,6 +46,70 @@
         });
     });
 
+    // ---- Count-up animation for bottom stats ----
+    function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
+    function parseStat(text) {
+        var raw = (text || '').trim();
+        var lower = raw.toLowerCase();
+
+        var hasK = lower.indexOf('k') !== -1;
+        var hasPercent = raw.indexOf('%') !== -1;
+        var hasPlus = raw.indexOf('+') !== -1;
+
+        // Extract numeric part (supports 12, 12.5, 12,500)
+        var numMatch = raw.replace(/,/g, '').match(/[\d]+(?:\.[\d]+)?/);
+        var num = numMatch ? parseFloat(numMatch[0]) : 0;
+
+        return {
+            num: isFinite(num) ? num : 0,
+            hasK: hasK,
+            hasPercent: hasPercent,
+            hasPlus: hasPlus
+        };
+    }
+
+    function formatStat(value, spec) {
+        var v = Math.round(value);
+        var out = '' + v;
+        if (spec.hasK) out += 'k';
+        if (spec.hasPlus) out += '+';
+        if (spec.hasPercent) out += '%';
+        return out;
+    }
+
+    function animateCount(el, target, spec, durationMs) {
+        var start = performance.now();
+        function frame(now) {
+            var t = Math.min(1, (now - start) / durationMs);
+            var eased = easeOutCubic(t);
+            var current = target * eased;
+            el.textContent = formatStat(current, spec);
+            if (t < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+    }
+
+    (function initStatsCountUp() {
+        var values = document.querySelectorAll('.landing-stats .stat-value');
+        if (!values || values.length === 0) return;
+
+        values.forEach(function (el) {
+            var spec = parseStat(el.textContent);
+            var target = spec.num;
+
+            // Start from 0 immediately
+            el.textContent = formatStat(0, spec);
+
+            // Animate a moment later for a nicer feel
+            setTimeout(function () {
+                animateCount(el, target, spec, 1400);
+            }, 200);
+        });
+    })();
+
     // ---- Floating particles background ----
     var container = document.getElementById('particles');
     if (!container) return;
