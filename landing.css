@@ -68,28 +68,24 @@ body.page-landing::before {
 /* Logo: top left corner, fixed (does not scroll) */
 .landing-logo {
     position: fixed;
-
-
-    top: 100;
-    left: 100;
-
+    top: 0;
+    left: 0;
     z-index: 10;
-    padding: clamp(12px, 2vw, 20px);
-
-    background: rgba(0, 0, 0, 0.4);
+    padding: clamp(8px, 1.5vw, 14px) clamp(12px, 2vw, 20px);
+    background: rgba(0, 0, 0, 0.45);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-
-    border: none;              /* ❌ remove border */
-    box-shadow: none;          /* ❌ remove shadow */
+    border: none;
+    box-shadow: none;
     border-bottom-right-radius: 12px;
+    max-width: min(320px, 40vw);
 }
 
 .landing-logo-img {
     display: block;
-    height: clamp(70px, 12vw, 110px);
+    height: clamp(48px, 7vw, 72px);
     width: auto;
-    max-width: 800px;
+    max-width: 100%;
     object-fit: contain;
 }
 /* ---- 4. Futuristic animated background ---- */
@@ -212,7 +208,7 @@ body.page-landing::before {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: clamp(24px, 5vw, 48px) 20px 60px;
+    padding: clamp(110px, 13vw, 140px) 20px 48px;
 }
 
 /* ---- 1. Title: top center, large, gradient glow, fade-in, floating ---- */
@@ -614,18 +610,21 @@ body.page-landing::before {
 
 /* ---- Bottom stats strip (like reference image) ---- */
 .landing-stats {
-    position: fixed;
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
     z-index: 9;
     border-radius: 18px;
     background: rgba(255, 255, 255, 0.82);
     border: 1px solid rgba(255, 255, 255, 0.28);
-    box-shadow: 0 22px 60px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
     overflow: hidden;
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 .landing-stats::before {
@@ -650,7 +649,7 @@ body.page-landing::before {
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
     align-items: center;
     gap: 0;
     padding: 14px 16px;
@@ -743,9 +742,7 @@ body.page-landing::before {
 
 @media (max-width: 900px) {
     .landing-stats {
-        left: 12px;
-        right: 12px;
-        bottom: 12px;
+        max-width: 100%;
     }
 }
 
@@ -883,7 +880,20 @@ body.page-landing .login-card-glass input::placeholder {
 }
 
 body.page-landing select option {
-    background-color: #0c1023 !important;
+    background-color: #1a2340 !important;
     color: #ffffff !important;
+}
+
+body.page-landing .login-card-glass select {
+    background: rgba(20, 30, 60, 0.75) !important;
+    border-color: rgba(255,255,255,0.25) !important;
+    color: #ffffff !important;
+    appearance: auto;
+}
+
+body.page-landing .login-card-glass select:focus {
+    border-color: rgba(94, 234, 212, 0.7) !important;
+    box-shadow: 0 0 18px rgba(13, 148, 136, 0.25) !important;
+    outline: none !important;
 }
 

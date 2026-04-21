@@ -30,12 +30,16 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Student Dashboard | Project Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        .alert-warn{ background:rgba(255,204,0,0.1); border:1px solid #ffcc00; color:#ffcc00;
+        .alert-warn{ background:var(--gold-pale); border:1px solid #7dd3fc; color:#0e4a72;
                      border-radius:10px; padding:12px 16px; margin-bottom:16px; font-size:0.88em; display:none; }
-        .file-hint { font-size:0.75em; color:#aaa; margin-top:4px; }
+        .file-hint { font-size:0.75em; color:var(--text-muted); margin-top:4px; }
         select:disabled { opacity:0.45; cursor:not-allowed; }
+        .dashboard-main.centered { display:flex; align-items:flex-start; justify-content:center; flex-wrap:wrap; gap:24px; }
     </style>
 </head>
 <body>
@@ -56,7 +60,7 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
         <div class="glass-panel floating">
             <div class="app-header">
                 <h1>Submit / Update Project Details</h1>
-                <p style="color:#aaa;font-size:0.84em;">
+                <p style="color:var(--text-muted);font-size:0.84em;">
                     Select Year first — Semester options will update automatically.
                     If a record exists for that semester, you will see an update screen.
                 </p>
@@ -171,13 +175,13 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
         <div class="glass-panel" style="margin-top:28px;">
             <div class="app-header">
                 <h2>Upload Project Files</h2>
-                <p style="color:#aaa;font-size:0.84em;">Select the year and semester you are uploading for, then attach your files.</p>
+                <p style="color:var(--text-muted);font-size:0.84em;">Select the year and semester you are uploading for, then attach your files.</p>
             </div>
 
             <?php if (!empty($_SESSION['upload_flash'])): ?>
                 <div style="padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:0.88em;
                     <?php echo strpos($_SESSION['upload_flash'],'success')!==false||strpos($_SESSION['upload_flash'],'Success')!==false
-                        ? 'background:rgba(0,255,136,0.1);border:1px solid #00ff88;color:#00ff88;'
+                        ? 'background:var(--green-pale);border:1px solid var(--border);color:var(--green-dark);'
                         : 'background:rgba(255,80,80,0.1);border:1px solid #ff5050;color:#ff5050;'; ?>">
                     <?php echo htmlspecialchars($_SESSION['upload_flash']); unset($_SESSION['upload_flash']); ?>
                 </div>

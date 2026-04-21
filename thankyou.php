@@ -22,13 +22,11 @@ $guides = [
     'R. Naga Sirisha',
 ];
 
-// ── INITIAL SUBMIT: check duplicate by reg_no + year + semester ───────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['initial_submit'])) {
     $reg_no   = trim($_POST['reg_no']);
-    $year     = trim($_POST['year']);       // "1" or "2"
-    $semester = trim($_POST['semester']);   // "I" or "II"
+    $year     = trim($_POST['year']);
+    $semester = trim($_POST['semester']);
 
-    // Duplicate check: same student, same year, same semester
     $chk = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no=? AND year=? AND semester=?");
     $chk->bind_param("sss", $reg_no, $year, $semester);
     $chk->execute();
@@ -38,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['initial_submit'])) {
         $is_duplicate = true;
         $student_data = $res->fetch_assoc();
     } else {
-        // New record
         $ins = $conn->prepare(
             "INSERT INTO student_submissions
                 (reg_no, student_name, branch, year, section, semester, domain, project_title, guide_name)
@@ -59,7 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['initial_submit'])) {
     }
 }
 
-// ── UPDATE existing record ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_full_update'])) {
     $upd = $conn->prepare(
         "UPDATE student_submissions
@@ -88,37 +84,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_full_update'])) {
 <head>
     <meta charset="UTF-8">
     <link rel="stylesheet" href="style.css">
-    <title>Status | VFSTR</title>
+    <title>Status | CA Dept</title>
     <style>
         .field-row { display:flex; gap:14px; }
         .field-row .form-group { flex:1; }
+        .success-icon {
+            width: 64px; height: 64px;
+            background: var(--green-pale); border: 1px solid var(--border);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem;
+            margin: 0 auto 18px;
+            box-shadow: 0 8px 24px rgba(13,74,69,0.25);
+        }
+        .warn-icon {
+            width: 64px; height: 64px;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.6rem;
+            margin: 0 auto 18px;
+            box-shadow: 0 8px 24px rgba(201,146,42,0.25);
+        }
     </style>
 </head>
 <body>
 <div class="background-overlay"></div>
 <div class="page-wrapper">
-    <div class="glass-panel floating" style="max-width:640px;padding:32px;">
+    <div class="glass-panel" style="max-width:640px;padding:36px;">
 
         <?php if (isset($_GET['updated']) || $success): ?>
-        <!-- ── SUCCESS ── -->
+        <!-- SUCCESS -->
         <div style="text-align:center;">
-            <h1 style="color:#00ff88;">
-                <?php echo isset($_GET['updated']) ? '✓ Details Updated!' : '✓ Project Recorded!'; ?>
+            <div class="success-icon">✓</div>
+            <h1 style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--green-dark);margin-bottom:8px;">
+                <?php echo isset($_GET['updated']) ? 'Details Updated!' : 'Project Recorded!'; ?>
             </h1>
-            <p style="color:#aaa;">Your project details have been saved successfully.</p>
-            <a href="student_dashboard.php" class="btn-gradient"
-               style="display:inline-block;margin-top:24px;text-decoration:none;">
-                Back to Dashboard
+            <p style="color:rgba(255,255,255,0.65);font-size:0.9rem;margin-bottom:28px;">
+                Your project details have been saved successfully.
+            </p>
+            <a href="student_dashboard.php" class="btn-gradient">
+                ← Back to Dashboard
             </a>
         </div>
 
         <?php elseif ($is_duplicate): ?>
-        <!-- ── DUPLICATE — UPDATE FORM ── -->
-        <div style="text-align:center;margin-bottom:22px;">
-            <h2 style="color:#ffcc00;">⚠️ Record Already Exists</h2>
-            <p style="color:#aaa;font-size:0.88em;">
+        <!-- DUPLICATE — UPDATE FORM -->
+        <div style="text-align:center;margin-bottom:26px;">
+            <div class="warn-icon">⚠</div>
+            <h2 style="font-family:'Playfair Display',serif;font-size:1.35rem;color:var(--green-dark);margin-bottom:8px;text-shadow:0 0 16px rgba(0,212,255,0.4);">
+                Record Already Exists
+            </h2>
+            <p style="color:rgba(255,255,255,0.65);font-size:0.88rem;">
                 You already submitted for
-                <strong style="color:#fff;">
+                <strong style="color:var(--green-dark);">
                     Year <?php echo htmlspecialchars($student_data['year']); ?> —
                     Semester <?php echo htmlspecialchars($student_data['semester']); ?>
                 </strong>.
@@ -132,20 +151,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_full_update'])) {
             <input type="hidden" name="year_hidden" value="<?php echo htmlspecialchars($student_data['year']); ?>">
             <input type="hidden" name="sem_hidden"  value="<?php echo htmlspecialchars($student_data['semester']); ?>">
 
-            <!-- Reg No readonly -->
             <div class="form-group">
                 <label>Registration Number</label>
-                <input type="text" value="<?php echo htmlspecialchars($student_data['reg_no']); ?>" readonly style="opacity:0.7;">
+                <input type="text" value="<?php echo htmlspecialchars($student_data['reg_no']); ?>" readonly style="opacity:0.65;background:rgba(0,0,0,0.35);">
             </div>
 
-            <!-- Student Name -->
             <div class="form-group">
                 <label>Student Name</label>
                 <input type="text" name="student_name"
                        value="<?php echo htmlspecialchars($student_data['student_name']); ?>" required>
             </div>
 
-            <!-- Branch + Year + Section -->
             <div class="field-row">
                 <div class="form-group">
                     <label>Branch</label>
@@ -166,33 +182,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_full_update'])) {
                 </div>
             </div>
 
-            <!-- Year & Semester readonly -->
             <div class="field-row">
                 <div class="form-group">
                     <label>Year</label>
-                    <input type="text" value="Year <?php echo htmlspecialchars($student_data['year']); ?>" readonly style="opacity:0.7;">
+                    <input type="text" value="Year <?php echo htmlspecialchars($student_data['year']); ?>" readonly style="opacity:0.65;background:rgba(0,0,0,0.35);">
                 </div>
                 <div class="form-group">
                     <label>Semester</label>
-                    <input type="text" value="Semester <?php echo htmlspecialchars($student_data['semester']); ?>" readonly style="opacity:0.7;">
+                    <input type="text" value="Semester <?php echo htmlspecialchars($student_data['semester']); ?>" readonly style="opacity:0.65;background:rgba(0,0,0,0.35);">
                 </div>
             </div>
 
-            <!-- Domain -->
             <div class="form-group">
                 <label>Project Domain</label>
                 <input type="text" name="domain"
                        value="<?php echo htmlspecialchars($student_data['domain'] ?? ''); ?>" required>
             </div>
 
-            <!-- Project Title -->
             <div class="form-group">
                 <label>Project Title</label>
                 <input type="text" name="project_title"
                        value="<?php echo htmlspecialchars($student_data['project_title']); ?>" required>
             </div>
 
-            <!-- Guide -->
             <div class="form-group">
                 <label>Project Guide</label>
                 <select name="guide_name" required>
@@ -206,9 +218,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['do_full_update'])) {
                 </select>
             </div>
 
-            <button type="submit" class="btn-gradient" style="width:100%;">Save Updated Details</button>
+            <button type="submit" class="btn-gradient" style="width:100%;margin-top:8px;">Save Updated Details</button>
             <div style="text-align:center;margin-top:14px;">
-                <a href="student_dashboard.php" style="color:#aaa;font-size:0.87em;text-decoration:none;">Cancel</a>
+                <a href="student_dashboard.php" style="color:rgba(255,255,255,0.65);font-size:0.87em;text-decoration:none;transition:color 0.14s;"
+                   onmouseover="this.style.color='var(--green)'" onmouseout="this.style.color='var(--text-muted)'">
+                    ← Cancel, go back
+                </a>
             </div>
         </form>
 

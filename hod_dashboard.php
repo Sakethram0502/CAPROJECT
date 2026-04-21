@@ -10,34 +10,12 @@ $view     = $_GET['view'] ?? 'overview';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HOD Dashboard | Project Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        .hod-table { width:100%; border-collapse:collapse; margin-top:16px; }
-        .hod-table th { background:rgba(0,212,255,0.15); color:#00d4ff; padding:10px 14px;
-                        text-align:left; font-size:0.85em; letter-spacing:1px; border-bottom:1px solid rgba(0,212,255,0.3); }
-        .hod-table td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.07);
-                        font-size:0.88em; color:#e0e0e0; vertical-align:top; }
-        .hod-table tr:hover td { background:rgba(255,255,255,0.04); }
-        .staff-card-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; margin-top:16px; }
-        .staff-card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);
-                      border-radius:12px; padding:18px 20px; transition:0.3s; cursor:pointer; }
-        .staff-card:hover, .staff-card.active { border-color:#00d4ff; background:rgba(0,212,255,0.1); }
-        .staff-card h4 { margin:0 0 6px; color:#fff; font-size:0.95em; }
-        .staff-card .count { font-size:1.6em; font-weight:700; color:#00d4ff; }
-        .staff-card .label { font-size:0.75em; color:#aaa; margin-top:2px; }
-        .section-heading { color:#fff; margin-bottom:4px; }
-        .sub-heading { color:#aaa; font-size:0.85em; margin:0 0 16px; }
-        .no-data { color:#888; font-size:0.9em; padding:20px 0; }
-        .back-link { display:inline-block; margin-bottom:15px; color:#00d4ff; text-decoration:none; font-size:0.9em; }
-        .pill-link { text-decoration:none; color:inherit; }
-        .pill-link:hover .pill { background:rgba(0,212,255,0.4); border-color:#00d4ff; }
-
-        .staff-profile { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.10); }
-        .staff-profile img { width: 100%; height: 170px; object-fit: cover; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); }
-        .staff-profile .profile-title { margin: 10px 0 6px; color: #00d4ff; font-weight: 700; font-size: 0.85em; letter-spacing: 0.06em; text-transform: uppercase; }
-        .staff-profile .profile-name { margin: 0; color: #fff; font-weight: 700; font-size: 0.92em; }
-        .staff-profile .profile-role { margin: 2px 0 10px; color: rgba(255,255,255,0.75); font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; }
-        .staff-profile .profile-meta { margin: 0; color: rgba(255,255,255,0.82); font-size: 0.82em; line-height: 1.5; word-break: break-word; }
+        /* All styles handled by style.css (warm academic theme) */
     </style>
 </head>
 <body>
@@ -78,12 +56,12 @@ $view     = $_GET['view'] ?? 'overview';
                 <p class="sub-heading">Department of Computer Applications — Project Management System</p>
                 <div class="card-grid" style="margin-top:20px;">
                     <div class="year-card floating" style="text-align:center;">
-                        <div style="font-size:2.2em;font-weight:700;color:#00d4ff;"><?php echo $total; ?></div>
-                        <div style="color:#aaa;font-size:0.85em;margin-top:4px;">Total Students</div>
+                        <div style="font-size:2.2em;font-weight:700;color:var(--green);font-family:'Inter',monospace;"><?php echo $total; ?></div>
+                        <div style="color:var(--text-muted);font-size:0.85em;margin-top:4px;">Total Students</div>
                     </div>
                     <div class="year-card floating" style="text-align:center;">
-                        <div style="font-size:2.2em;font-weight:700;color:#00ff88;"><?php echo $staff_count; ?></div>
-                        <div style="color:#aaa;font-size:0.85em;margin-top:4px;">Project Guides</div>
+                        <div style="font-size:2.2em;font-weight:700;color:var(--gold);font-family:'Inter',monospace;"><?php echo $staff_count; ?></div>
+                        <div style="color:var(--text-muted);font-size:0.85em;margin-top:4px;">Project Guides</div>
                     </div>
                 </div>
 
@@ -281,7 +259,7 @@ $view     = $_GET['view'] ?? 'overview';
                 </div>
 
                 <?php if ($selected_guide): ?>
-                    <h3 style="color:#fff;margin-top:36px;">
+                    <h3 style="color:var(--text-dark);margin-top:36px;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;">
                         Students under <?php echo htmlspecialchars($selected_guide); ?>
                     </h3>
                     <?php
