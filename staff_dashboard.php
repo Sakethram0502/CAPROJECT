@@ -37,8 +37,13 @@ if ($view === 'bca' || $view === 'mca') {
          WHERE guide_name = ? AND branch = ?
          ORDER BY reg_no, year, semester"
     );
-    $stmt->bind_param('ss', $username, strtoupper($view));
-} else {
+    
+    // Assign to a variable first
+    $branch = strtoupper($view); 
+    
+    // Pass the variable
+    $stmt->bind_param('ss', $username, $branch);
+}else {
     $stmt = $conn->prepare(
         "SELECT * FROM student_submissions
          WHERE guide_name = ?
@@ -96,28 +101,205 @@ $semLabels = [
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Staff Dashboard | Project Management</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <style>
-        td[title]        { cursor:help; border-bottom:1px dashed rgba(255,255,255,0.3); }
-        .project-subtext { display:block; font-size:0.82em; color:#00d4ff; margin-top:3px; }
-        .domain-tag      { display:block; font-size:0.73em; color:#ffcc00; text-transform:uppercase; margin-top:2px; }
-        .sem-badge       { display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.72em; font-weight:600;
-                           background:rgba(0,212,255,0.12); color:#00d4ff; border:1px solid rgba(0,212,255,0.3); }
-        textarea         { resize:none; width:100%; padding:10px; border-radius:5px;
-                           background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); }
-        .view-btn        { background:rgba(0,212,255,0.18); color:#00d4ff; border:1px solid #00d4ff;
-                           padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.8em; white-space:nowrap; }
-        .view-btn:hover  { background:rgba(0,212,255,0.35); }
-        .pending-tag     { opacity:0.4; font-size:0.8em; }
-        /* Files modal download buttons */
-        .fm-btn          { display:block; width:100%; padding:11px 16px; border-radius:8px;
-                           font-size:0.9em; text-decoration:none; margin-bottom:8px;
-                           border:1px solid; transition:opacity 0.2s; }
-        .fm-btn:hover    { opacity:0.75; }
-        .fm-doc          { background:rgba(0,212,255,0.12); color:#00d4ff; border-color:#00d4ff; }
-        .fm-ppt          { background:rgba(255,204,0,0.10); color:#ffcc00; border-color:#ffcc00; }
-        .fm-code         { background:rgba(0,255,136,0.08); color:#00ff88; border-color:#00ff88; }
-        .fm-zip          { background:rgba(180,100,255,0.15); color:#c084fc; border-color:#c084fc; margin-top:4px; }
+        /* ── Student card — modern layout ── */
+        .student-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            overflow: hidden;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .student-card:hover { border-color: var(--border-strong); box-shadow: var(--shadow-md); }
+        /* Red left border so no-upload students are impossible to miss */
+        .student-card.no-upload { border-left: 4px solid #e53e3e; }
+
+        /* Alert strip at top of no-upload cards */
+        .upload-alert-strip {
+            background: #fff5f5;
+            border-bottom: 1px solid var(--red-bd);
+            padding: 5px 16px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--red-txt);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            letter-spacing: 0.01em;
+        }
+
+        /* Info row: Reg | Name | Project | Upload status */
+        .student-card-header {
+            display: grid;
+            grid-template-columns: 160px 1fr 1fr 130px;
+            align-items: stretch;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .sc-col {
+            padding: 13px 15px;
+            border-right: 1px solid var(--border-light);
+        }
+        .sc-col:last-child {
+            border-right: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sc-label {
+            font-size: 0.67rem;
+            font-weight: 700;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            color: var(--text-faint);
+            margin-bottom: 5px;
+        }
+        .sc-value {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            line-height: 1.35;
+        }
+        .sc-reg {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--navy);
+            letter-spacing: 0.02em;
+        }
+        .sc-sub {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+        }
+
+        /* Domain chip */
+        .domain-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 9px;
+            border-radius: 5px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 5px;
+        }
+        .domain-chip.no-domain { background: #f1f5fe; color: #3b5bdb; border: 1px solid #c5d2fb; }
+        .domain-chip.has-domain { background: var(--green-bg); color: var(--green-txt); border: 1px solid var(--green-bd); }
+
+        /* Upload status tags */
+        .tag-upload-ok { font-size: 0.78rem; font-weight: 700; padding: 5px 12px; border-radius: 7px; background: var(--green-bg); color: var(--green-txt); border: 1px solid var(--green-bd); }
+        .tag-upload-no { font-size: 0.78rem; font-weight: 700; padding: 5px 12px; border-radius: 7px; background: var(--red-bg); color: var(--red-txt); border: 1px solid var(--red-bd); }
+
+        /* Reviews row — timeline style */
+        .reviews-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr) 110px 110px;
+            align-items: center;
+            background: #fafbfd;
+            border-top: 1px solid var(--border-light);
+        }
+        .review-cell {
+            padding: 10px 10px;
+            border-right: 1px solid var(--border-light);
+            text-align: center;
+        }
+        .review-cell:last-child { border-right: none; }
+        .review-cell-label {
+            font-size: 0.63rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-faint);
+            margin-bottom: 6px;
+        }
+
+        /* Review score bubble */
+        .mark-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 0.84rem;
+            font-weight: 700;
+            border: 2px solid;
+        }
+        .mark-badge.done { background: var(--green-bg); color: var(--green-txt); border-color: var(--green-bd); }
+        .mark-badge.miss { background: var(--red-bg);   color: var(--red-txt);   border-color: var(--red-bd); }
+
+        .mark-notes {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            max-width: 80px;
+            margin-left: auto; margin-right: auto;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+
+        /* Action cells — always visible, solid buttons */
+        .action-cell {
+            padding: 10px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--border-light);
+        }
+        .action-cell:last-child { border-right: none; }
+
+        /* Tab bar */
+        .tab-bar {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 18px;
+            background: var(--border-light);
+            border-radius: 9px;
+            padding: 4px;
+            width: fit-content;
+        }
+        .tab-btn {
+            padding: 7px 18px;
+            border-radius: 7px;
+            font-size: 0.84rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-family: 'DM Sans', sans-serif;
+            transition: all 0.15s;
+        }
+        .tab-btn.active { background: #fff; color: var(--navy); font-weight: 600; box-shadow: var(--shadow-sm); }
+        .tab-btn .tab-count {
+            display: inline-flex; align-items: center; justify-content: center;
+            background: #fee2e2; color: #dc2626; border-radius: 100px;
+            font-size: 0.68rem; font-weight: 700; padding: 1px 6px; margin-left: 5px;
+        }
+
+        /* Pending export bar */
+        .pending-export-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--amber-bg); border: 1px solid var(--amber-bd);
+            border-radius: var(--radius-md); padding: 11px 16px; margin-bottom: 12px;
+        }
+        .pending-export-bar p { font-size: 0.84rem; color: var(--amber-txt); font-weight: 600; margin: 0; }
+        .pending-export-btns { display: flex; gap: 8px; }
+        .exp-btn {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 6px 14px; border-radius: 7px; font-size: 0.81rem;
+            font-weight: 600; text-decoration: none; border: 1px solid;
+            font-family: 'DM Sans', sans-serif; transition: opacity 0.15s;
+        }
+        .exp-btn:hover { opacity: 0.75; }
+        .exp-btn.pdf   { background: #fff; color: var(--red-txt); border-color: var(--red-bd); }
+        .exp-btn.excel { background: #fff; color: var(--green-txt); border-color: var(--green-bd); }
     </style>
 </head>
 <body>
@@ -135,97 +317,248 @@ $semLabels = [
 
     <div class="dashboard-layout">
         <aside class="sidebar">
-            <div class="sidebar-title">Menu</div>
+            <div class="sidebar-title">Students</div>
             <a href="staff_dashboard.php?view=overview" class="sidebar-link <?php echo $view==='overview'?'active':''; ?>">My Students</a>
             <a href="staff_dashboard.php?view=mca"      class="sidebar-link <?php echo $view==='mca'     ?'active':''; ?>">MCA Students</a>
             <a href="staff_dashboard.php?view=bca"      class="sidebar-link <?php echo $view==='bca'     ?'active':''; ?>">BCA Students</a>
-            <div style="margin-top:40px;border-top:1px solid rgba(255,255,255,0.1);padding-top:20px;">
-                <p style="font-size:0.7em;color:#888;padding-left:15px;letter-spacing:1px;margin-bottom:10px;">EXPORTS</p>
+            <div style="margin-top:40px;border-top:1px solid rgba(255,255,255,0.10);padding-top:16px;">
+                <p style="font-size:0.68em;color:rgba(255,255,255,0.35);padding-left:18px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Export All</p>
                 <?php $rp = ($view==='overview')?'ALL':strtoupper($view); ?>
-                <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=pdf"   target="_blank" class="sidebar-link" style="color:#00d4ff;">📄 PDF Report</a>
-                <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=excel" class="sidebar-link" style="color:#00ff88;">📊 Excel Sheet</a>
+                <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=pdf"   target="_blank" class="sidebar-link">📄 PDF Report</a>
+                <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=excel" target="_blank" class="sidebar-link">📊 Excel Sheet</a>
             </div>
         </aside>
 
         <main class="dashboard-main">
-            <h2 class="section-heading">
+
+            <?php
+            $no_upload = array_values(array_filter($submissions, fn($r) => empty($r['upload_id'])));
+            $no_review = array_values(array_filter($submissions, fn($r) =>
+                !$r['r1_marks'] && !$r['r2_marks'] && !$r['r3_marks'] && !$r['r4_marks'] && !$r['r5_marks']
+            ));
+            $active_tab = $_GET['tab'] ?? 'all';
+            ?>
+
+            <!-- Heading -->
+            <h2 class="section-heading" style="margin-bottom:2px;">
                 <?php echo $view==='overview' ? 'My Students' : strtoupper($view).' Students'; ?>
-                <span style="font-size:0.6em;color:#aaa;margin-left:12px;"><?php echo count($submissions); ?> records</span>
             </h2>
+            <p class="sub-heading"><?php echo count($submissions); ?> students assigned to you</p>
 
-            <div class="table-container">
-                <table class="glass-table">
-                    <thead>
-                        <tr>
-                            <th>Reg No</th>
-                            <th>Student & Project</th>
-                            <th>Year / Sem</th>
-                            <th>R1</th><th>R2</th><th>R3</th><th>R4</th><th>R5</th>
-                            <th>Files</th>
-                            <th>Update</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($submissions as $row): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($row['reg_no']); ?></td>
-                            <td>
-                                <strong><?php echo htmlspecialchars($row['student_name']); ?></strong>
-                                <span class="domain-tag">Domain: <?php echo htmlspecialchars($row['domain'] ?? '—'); ?></span>
-                                <span class="project-subtext"><?php echo htmlspecialchars($row['project_title']); ?></span>
-                            </td>
-                            <td>
-                                <span class="sem-badge">
-                                    Yr <?php echo htmlspecialchars($row['year'] ?? '?'); ?> /
-                                    <?php echo $semLabels[$row['semester']] ?? htmlspecialchars($row['semester']); ?>
-                                </span>
-                            </td>
-                            <td title="<?php echo htmlspecialchars($row['r1_notes']??''); ?>"><?php echo $row['r1_marks']?:'-'; ?></td>
-                            <td title="<?php echo htmlspecialchars($row['r2_notes']??''); ?>"><?php echo $row['r2_marks']?:'-'; ?></td>
-                            <td title="<?php echo htmlspecialchars($row['r3_notes']??''); ?>"><?php echo $row['r3_marks']?:'-'; ?></td>
-                            <td title="<?php echo htmlspecialchars($row['r4_notes']??''); ?>"><?php echo $row['r4_marks']?:'-'; ?></td>
-                            <td title="<?php echo htmlspecialchars($row['r5_notes']??''); ?>"><?php echo $row['r5_marks']?:'-'; ?></td>
-
-                            <!-- ── FILES COLUMN ── -->
-                            <td>
-                                <?php if (!empty($row['upload_id'])): ?>
-                                    <button class="view-btn"
-                                        onclick="openFilesModal(
-                                            '<?php echo $row['upload_id']; ?>',
-                                            '<?php echo htmlspecialchars(addslashes($row['reg_no'])); ?>',
-                                            '<?php echo htmlspecialchars(addslashes($row['student_name'])); ?>',
-                                            <?php echo $row['document_name'] ? 1 : 0; ?>,
-                                            <?php echo $row['ppt_name']      ? 1 : 0; ?>,
-                                            <?php echo $row['code_name']     ? 1 : 0; ?>
-                                        )">
-                                        📁 View Files
-                                    </button>
-                                <?php else: ?>
-                                    <span class="pending-tag">Pending</span>
-                                <?php endif; ?>
-                            </td>
-
-                            <!-- ── UPDATE BUTTON ── -->
-                            <td>
-                                <button class="btn-view btn-update"
-                                    data-reg="<?php echo htmlspecialchars($row['reg_no']); ?>"
-                                    data-sem="<?php echo htmlspecialchars($row['semester']); ?>"
-                                    data-year="<?php echo htmlspecialchars($row['year'] ?? ''); ?>"
-                                    data-name="<?php echo htmlspecialchars($row['student_name']); ?>"
-                                    data-domain="<?php echo htmlspecialchars($row['domain'] ?? '—'); ?>"
-                                    data-project="<?php echo htmlspecialchars($row['project_title']); ?>">
-                                    Update
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-
-                        <?php if (empty($submissions)): ?>
-                        <tr><td colspan="10" style="text-align:center;color:#888;padding:30px;">No students assigned yet.</td></tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+            <!-- Stats summary -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-card-num"><?php echo count($submissions); ?></div>
+                    <div class="stat-card-lbl">Total Students</div>
+                </div>
+                <div class="stat-card gold">
+                    <div class="stat-card-num"><?php echo count($no_upload); ?></div>
+                    <div class="stat-card-lbl">Pending Upload</div>
+                </div>
+                <div class="stat-card red">
+                    <div class="stat-card-num"><?php echo count($no_review); ?></div>
+                    <div class="stat-card-lbl">No Review Yet</div>
+                </div>
             </div>
+
+            <!-- Tab bar -->
+            <div class="tab-bar">
+                <button class="tab-btn <?php echo $active_tab==='all'?'active':''; ?>" onclick="switchTab('all')">
+                    All Students
+                </button>
+                <button class="tab-btn <?php echo $active_tab==='no_upload'?'active':''; ?>" onclick="switchTab('no_upload')">
+                    No Upload
+                    <?php if(count($no_upload)>0): ?>
+                    <span class="tab-count"><?php echo count($no_upload); ?></span>
+                    <?php endif; ?>
+                </button>
+                <button class="tab-btn <?php echo $active_tab==='no_review'?'active':''; ?>" onclick="switchTab('no_review')">
+                    No Review
+                    <?php if(count($no_review)>0): ?>
+                    <span class="tab-count"><?php echo count($no_review); ?></span>
+                    <?php endif; ?>
+                </button>
+            </div>
+
+            <!-- ══ ALL STUDENTS TAB ══ -->
+            <div id="tab-all" class="tab-section" style="display:<?php echo $active_tab==='all'?'block':'none'; ?>;">
+                <?php foreach ($submissions as $row): ?>
+                <div class="student-card <?php echo empty($row['upload_id']) ? 'no-upload' : ''; ?>">
+                    <?php if(empty($row['upload_id'])): ?>
+                    <div class="upload-alert-strip">⚠ Document not uploaded yet</div>
+                    <?php endif; ?>
+                    <!-- Header: student info -->
+                    <div class="student-card-header">
+                        <div class="sc-col">
+                            <div class="sc-label">Reg No</div>
+                            <div class="sc-reg"><?php echo htmlspecialchars($row['reg_no']); ?></div>
+                            <div class="sc-sub"><?php echo htmlspecialchars($row['branch']); ?> &nbsp;·&nbsp; Sec <?php echo htmlspecialchars($row['section'] ?? '—'); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Student Name</div>
+                            <div class="sc-value"><?php echo htmlspecialchars($row['student_name']); ?></div>
+                            <div class="sc-sub">Year <?php echo htmlspecialchars($row['year'] ?? '?'); ?> &nbsp;/&nbsp; Sem <?php echo htmlspecialchars($row['semester']); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Project</div>
+                            <div class="domain-chip <?php echo empty($row['domain']) ? 'no-domain' : 'has-domain'; ?>">
+                                <?php echo htmlspecialchars($row['domain'] ?? 'No Domain'); ?>
+                            </div>
+                            <div class="sc-value" style="font-size:0.82rem;font-weight:500;color:var(--slate);"><?php echo htmlspecialchars($row['project_title']); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <?php if(!empty($row['upload_id'])): ?>
+                                <span class="tag-upload-ok">✓ Uploaded</span>
+                            <?php else: ?>
+                                <span class="tag-upload-no">✗ No Upload</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <!-- Reviews row -->
+                    <div class="reviews-row">
+                        <?php foreach(['r1'=>'Review 1','r2'=>'Review 2','r3'=>'Review 3','r4'=>'Review 4','r5'=>'Review 5'] as $rk=>$rl): ?>
+                        <div class="review-cell">
+                            <div class="review-cell-label"><?php echo $rl; ?></div>
+                            <?php if($row[$rk.'_marks']): ?>
+                                <div class="mark-badge done" title="<?php echo htmlspecialchars($row[$rk.'_notes']??''); ?>"><?php echo $row[$rk.'_marks']; ?></div>
+                                <?php if(!empty($row[$rk.'_notes'])): ?>
+                                <div class="mark-notes" title="<?php echo htmlspecialchars($row[$rk.'_notes']); ?>"><?php echo htmlspecialchars($row[$rk.'_notes']); ?></div>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <div class="mark-badge miss">—</div>
+                            <?php endif; ?>
+                        </div>
+                        <?php endforeach; ?>
+                        <!-- Files action -->
+                        <div class="action-cell">
+                            <div class="review-cell-label">Files</div>
+                            <?php if(!empty($row['upload_id'])): ?>
+                            <button class="view-btn" onclick="openFilesModal('<?php echo $row['upload_id']; ?>','<?php echo htmlspecialchars(addslashes($row['reg_no'])); ?>','<?php echo htmlspecialchars(addslashes($row['student_name'])); ?>',<?php echo $row['document_name']?1:0; ?>,<?php echo $row['ppt_name']?1:0; ?>,<?php echo $row['code_name']?1:0; ?>)">📁 View Files</button>
+                            <?php else: ?>
+                            <span style="font-size:0.72rem;color:var(--text-faint);">None</span>
+                            <?php endif; ?>
+                        </div>
+                        <!-- Update action -->
+                        <div class="action-cell" style="border-right:none;">
+                            <div class="review-cell-label">Marks</div>
+                            <button class="btn-update"
+                                data-reg="<?php echo htmlspecialchars($row['reg_no']); ?>"
+                                data-sem="<?php echo htmlspecialchars($row['semester']); ?>"
+                                data-year="<?php echo htmlspecialchars($row['year'] ?? ''); ?>"
+                                data-name="<?php echo htmlspecialchars($row['student_name']); ?>"
+                                data-domain="<?php echo htmlspecialchars($row['domain'] ?? '—'); ?>"
+                                data-project="<?php echo htmlspecialchars($row['project_title']); ?>">
+                                Update
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php if(empty($submissions)): ?>
+                <div style="text-align:center;padding:40px;color:var(--text-muted);">No students assigned yet.</div>
+                <?php endif; ?>
+            </div>
+
+            <!-- ══ NO UPLOAD TAB ══ -->
+            <div id="tab-no_upload" class="tab-section" style="display:<?php echo $active_tab==='no_upload'?'block':'none'; ?>;">
+                <?php if(!empty($no_upload)): ?>
+                <div class="pending-export-bar">
+                    <p>⚠️ <?php echo count($no_upload); ?> students have not uploaded their documents yet.</p>
+                    <div class="pending-export-btns">
+                        <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=pdf&pending=upload"   target="_blank" class="exp-btn pdf">📄 Export PDF</a>
+                        <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=excel&pending=upload" target="_blank" class="exp-btn excel">📊 Export Excel</a>
+                    </div>
+                </div>
+                <?php foreach($no_upload as $row): ?>
+                <div class="student-card no-upload">
+                    <div class="upload-alert-strip">⚠ Document not uploaded yet</div>
+                    <div class="student-card-header">
+                        <div class="sc-col">
+                            <div class="sc-label">Reg No</div>
+                            <div class="sc-reg"><?php echo htmlspecialchars($row['reg_no']); ?></div>
+                            <div class="sc-sub"><?php echo htmlspecialchars($row['branch']); ?> &nbsp;·&nbsp; Sec <?php echo htmlspecialchars($row['section'] ?? '—'); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Student Name</div>
+                            <div class="sc-value"><?php echo htmlspecialchars($row['student_name']); ?></div>
+                            <div class="sc-sub">Year <?php echo htmlspecialchars($row['year'] ?? '?'); ?> &nbsp;/&nbsp; Sem <?php echo htmlspecialchars($row['semester']); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Project</div>
+                            <div class="domain-chip <?php echo empty($row['domain']) ? 'no-domain' : 'has-domain'; ?>">
+                                <?php echo htmlspecialchars($row['domain'] ?? 'No Domain'); ?>
+                            </div>
+                            <div class="sc-value" style="font-size:0.82rem;font-weight:500;color:var(--slate);"><?php echo htmlspecialchars($row['project_title']); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <span class="tag-upload-no">✗ No Upload</span>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php else: ?>
+                <div style="text-align:center;padding:48px;color:var(--text-muted);">
+                    <div style="font-size:2rem;margin-bottom:10px;">✅</div>
+                    All students have uploaded their documents.
+                </div>
+                <?php endif; ?>
+            </div>
+
+            <!-- ══ NO REVIEW TAB ══ -->
+            <div id="tab-no_review" class="tab-section" style="display:<?php echo $active_tab==='no_review'?'block':'none'; ?>;">
+                <?php if(!empty($no_review)): ?>
+                <div class="pending-export-bar">
+                    <p>⚠️ <?php echo count($no_review); ?> students have received no review marks yet.</p>
+                    <div class="pending-export-btns">
+                        <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=pdf&pending=review"   target="_blank" class="exp-btn pdf">📄 Export PDF</a>
+                        <a href="pdf_generator.php?course=<?php echo $rp; ?>&format=excel&pending=review" target="_blank" class="exp-btn excel">📊 Export Excel</a>
+                    </div>
+                </div>
+                <?php foreach($no_review as $row): ?>
+                <div class="student-card <?php echo empty($row['upload_id']) ? 'no-upload' : ''; ?>">
+                    <?php if(empty($row['upload_id'])): ?>
+                    <div class="upload-alert-strip">⚠ Document not uploaded yet</div>
+                    <?php endif; ?>
+                    <div class="student-card-header">
+                        <div class="sc-col">
+                            <div class="sc-label">Reg No</div>
+                            <div class="sc-reg"><?php echo htmlspecialchars($row['reg_no']); ?></div>
+                            <div class="sc-sub"><?php echo htmlspecialchars($row['branch']); ?> &nbsp;·&nbsp; Sec <?php echo htmlspecialchars($row['section'] ?? '—'); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Student Name</div>
+                            <div class="sc-value"><?php echo htmlspecialchars($row['student_name']); ?></div>
+                            <div class="sc-sub">Year <?php echo htmlspecialchars($row['year'] ?? '?'); ?> &nbsp;/&nbsp; Sem <?php echo htmlspecialchars($row['semester']); ?></div>
+                        </div>
+                        <div class="sc-col">
+                            <div class="sc-label">Project</div>
+                            <div class="domain-chip <?php echo empty($row['domain']) ? 'no-domain' : 'has-domain'; ?>">
+                                <?php echo htmlspecialchars($row['domain'] ?? 'No Domain'); ?>
+                            </div>
+                            <div class="sc-value" style="font-size:0.82rem;font-weight:500;color:var(--slate);"><?php echo htmlspecialchars($row['project_title']); ?></div>
+                        </div>
+                        <div class="sc-col" style="text-align:center;min-width:90px;">
+                            <button class="btn-update"
+                                data-reg="<?php echo htmlspecialchars($row['reg_no']); ?>"
+                                data-sem="<?php echo htmlspecialchars($row['semester']); ?>"
+                                data-year="<?php echo htmlspecialchars($row['year'] ?? ''); ?>"
+                                data-name="<?php echo htmlspecialchars($row['student_name']); ?>"
+                                data-domain="<?php echo htmlspecialchars($row['domain'] ?? '—'); ?>"
+                                data-project="<?php echo htmlspecialchars($row['project_title']); ?>">
+                                + Add Review
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+                <?php else: ?>
+                <div style="text-align:center;padding:48px;color:var(--text-muted);">
+                    <div style="font-size:2rem;margin-bottom:10px;">✅</div>
+                    All students have received at least one review.
+                </div>
+                <?php endif; ?>
+            </div>
+
         </main>
     </div>
 </div>
@@ -238,10 +571,10 @@ $semLabels = [
             <input type="hidden" name="reg_no"          id="modalRegNo">
             <input type="hidden" name="semester_filter" id="modalSem">
             <div class="form-group">
-                <p style="margin:0;font-size:0.9em;color:#ccc;">Student: <span id="dispName" style="color:white;font-weight:bold;"></span></p>
-                <p style="margin:2px 0;font-size:0.78em;color:#ffcc00;">Domain: <span id="dispDomain"></span></p>
-                <p style="margin:4px 0;font-size:0.78em;color:#aaa;">Year / Sem: <span id="dispSem" style="color:#00d4ff;"></span></p>
-                <p style="margin:4px 0 14px;font-size:0.83em;color:#00d4ff;">Project: <span id="dispProject"></span></p>
+                <p style="margin:0;font-size:0.9em;color:var(--text-muted);">Student: <span id="dispName" style="color:var(--text-dark);font-weight:600;font-family:'Playfair Display',serif;"></span></p>
+                <p style="margin:2px 0;font-size:0.78em;color:var(--gold);font-weight:600;">Domain: <span id="dispDomain"></span></p>
+                <p style="margin:4px 0;font-size:0.78em;color:var(--text-muted);">Year / Sem: <span id="dispSem" style="color:var(--green);font-weight:500;"></span></p>
+                <p style="margin:4px 0 14px;font-size:0.83em;color:var(--green-dark);font-weight:500;">Project: <span id="dispProject"></span></p>
             </div>
             <div class="form-group">
                 <label>Review Phase</label>
@@ -273,15 +606,23 @@ $semLabels = [
 <div class="modal-overlay" id="filesModal">
     <div class="modal-card floating" style="max-width:400px;">
         <h3 style="margin-bottom:4px;">📁 Student Files</h3>
-        <p id="fmStudent" style="color:#aaa;font-size:0.85em;margin:0 0 18px;"></p>
+        <p id="fmStudent" style="color:var(--text-muted);font-size:0.85em;margin:0 0 16px;"></p>
         <div id="fmButtons"></div>
-        <div style="margin-top:18px;text-align:right;">
-            <button type="button" id="filesModalClose" style="background:none;border:none;color:#aaa;cursor:pointer;font-size:0.9em;">Close</button>
+        <div style="margin-top:16px;text-align:right;">
+            <button type="button" id="filesModalClose" style="background:none;border:1px solid var(--border);border-radius:100px;color:var(--text-muted);cursor:pointer;font-size:0.85em;padding:6px 16px;font-family:'Inter',sans-serif;">Close</button>
         </div>
     </div>
 </div>
 
 <script>
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(name) {
+    document.querySelectorAll('.tab-section').forEach(s => s.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).style.display = 'block';
+    event.currentTarget.classList.add('active');
+}
+
 // ── Update modal ─────────────────────────────────────────────────────
 const updateModal = document.getElementById('updateModal');
 document.querySelectorAll('.btn-update').forEach(btn => {

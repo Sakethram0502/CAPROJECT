@@ -177,24 +177,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
         <?php endif; ?>
 
-        <section class="landing-stats" aria-label="Department highlights">
+        <section class="landing-stats" aria-label="Department highlights" style="margin-top: clamp(32px, 5vw, 56px);">
             <div class="landing-stats-inner">
                 <div class="stat-item">
-                    <div class="stat-value">60+</div>
-                    <div class="stat-label">Programs</div>
-                </div>
-                <div class="stat-divider" aria-hidden="true"></div>
-                <div class="stat-item">
-
                     <div class="stat-value">25+</div>
-
-                    <div class="stat-value">835+</div>
-
                     <div class="stat-label">Faculty</div>
                 </div>
                 <div class="stat-divider" aria-hidden="true"></div>
                 <div class="stat-item">
-                    <div class="stat-value">333+</div>
+                    <div class="stat-value">300+</div>
                     <div class="stat-label">Students</div>
                 </div>
                 <div class="stat-divider" aria-hidden="true"></div>
