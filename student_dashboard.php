@@ -23,6 +23,20 @@ foreach ($existing as $row) {
 
 // Pre-fill from latest record
 $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
+
+// Existing uploads for enforcing upload order in UI
+$uploadStmt = $conn->prepare("SELECT academic_year, semester FROM student_uploads WHERE reg_no = ? ORDER BY id ASC");
+$uploadStmt->bind_param("s", $regNo);
+$uploadStmt->execute();
+$uploadRows = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$uploadedSlots = [];
+foreach ($uploadRows as $row) {
+    $academicYear = (string)($row['academic_year'] ?? '');
+    $semesterVal  = strtoupper(trim((string)($row['semester'] ?? '')));
+    if (preg_match('/(\d+)/', $academicYear, $m) && in_array($semesterVal, ['I', 'II'], true)) {
+        $uploadedSlots[] = $m[1] . '|' . $semesterVal;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -175,7 +189,7 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
         <div class="glass-panel" style="margin-top:28px;">
             <div class="app-header">
                 <h2>Upload Project Files</h2>
-                <p style="color:var(--text-muted);font-size:0.84em;">Select the year and semester you are uploading for, then attach your files.</p>
+                <p style="color:var(--text-muted);font-size:0.84em;">Upload is allowed only in order (Year 1 Sem I, then Year 1 Sem II, and so on).</p>
             </div>
 
             <?php if (!empty($_SESSION['upload_flash'])): ?>
@@ -241,6 +255,7 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
 <script>
 // Existing submissions keyed by "year|semester"
 const submitted = <?php echo json_encode(array_keys($existingByKey)); ?>;
+const uploadedSlots = <?php echo json_encode(array_values(array_unique($uploadedSlots))); ?>;
 
 function updateSemester() {
     const year    = document.getElementById('year').value;
@@ -293,8 +308,36 @@ function updateUploadSem() {
     semSel.disabled  = true;
     if (!year) { semSel.add(new Option('-- Select Year first --', '')); return; }
     semSel.add(new Option('-- Select Semester --', ''));
-    semSel.add(new Option('Semester I',  'I'));
-    semSel.add(new Option('Semester II', 'II'));
+
+    const seq = [
+        { year: '1', sem: 'I' },
+        { year: '1', sem: 'II' },
+        { year: '2', sem: 'I' },
+        { year: '2', sem: 'II' },
+        { year: '3', sem: 'I' },
+        { year: '3', sem: 'II' }
+    ];
+
+    let nextAllowed = null;
+    for (let i = 0; i < seq.length; i++) {
+        const key = seq[i].year + '|' + seq[i].sem;
+        if (!uploadedSlots.includes(key)) {
+            nextAllowed = seq[i];
+            break;
+        }
+    }
+
+    ['I', 'II'].forEach(function(sem) {
+        const opt = new Option('Semester ' + sem, sem);
+        const isAllowed = nextAllowed && nextAllowed.year === year && nextAllowed.sem === sem;
+        if (!isAllowed) opt.disabled = true;
+        semSel.add(opt);
+    });
+
+    if (nextAllowed && nextAllowed.year === year) {
+        semSel.value = nextAllowed.sem;
+    }
+
     semSel.disabled = false;
 }
 </script>

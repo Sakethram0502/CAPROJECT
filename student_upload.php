@@ -31,6 +31,67 @@ if ($regNo === '' || $branch === '' || $year === '' || $semester === '') {
     upload_redirect('error');
 }
 
+if (!in_array($semester, ['I', 'II'], true) || !in_array($year, ['1', '2', '3'], true)) {
+    $_SESSION['upload_flash'] = 'Invalid Year/Semester selected.';
+    upload_redirect('error');
+}
+
+// Enforce one-time upload per semester and strict order:
+// Year 1 Sem I -> Year 1 Sem II -> Year 2 Sem I -> Year 2 Sem II -> Year 3 Sem I -> Year 3 Sem II
+$existingStmt = $conn->prepare(
+    "SELECT academic_year, semester
+     FROM student_uploads
+     WHERE reg_no = ? AND branch = ?"
+);
+if (!$existingStmt) {
+    $_SESSION['upload_flash'] = 'Upload failed: unable to validate existing uploads.';
+    upload_redirect('error');
+}
+$existingStmt->bind_param("ss", $regNo, $branch);
+$existingStmt->execute();
+$existingRows = $existingStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$existingStmt->close();
+
+$uploadedKeys = [];
+foreach ($existingRows as $row) {
+    $yrText = (string)($row['academic_year'] ?? '');
+    $semTxt = strtoupper(trim((string)($row['semester'] ?? '')));
+    if (preg_match('/(\d+)/', $yrText, $matches) && in_array($semTxt, ['I', 'II'], true)) {
+        $uploadedKeys[$matches[1] . '|' . $semTxt] = true;
+    }
+}
+
+$targetKey = $year . '|' . $semester;
+if (isset($uploadedKeys[$targetKey])) {
+    $_SESSION['upload_flash'] = "You already uploaded files for Year $year Semester $semester. One upload allowed per semester.";
+    upload_redirect('error');
+}
+
+$sequence = [
+    ['1', 'I'],
+    ['1', 'II'],
+    ['2', 'I'],
+    ['2', 'II'],
+    ['3', 'I'],
+    ['3', 'II'],
+];
+$nextAllowed = null;
+foreach ($sequence as $slot) {
+    $slotKey = $slot[0] . '|' . $slot[1];
+    if (!isset($uploadedKeys[$slotKey])) {
+        $nextAllowed = $slot;
+        break;
+    }
+}
+
+if ($nextAllowed !== null) {
+    if ($year !== $nextAllowed[0] || $semester !== $nextAllowed[1]) {
+        $_SESSION['upload_flash'] =
+            "Upload not allowed. You can upload only in order. Next allowed: Year {$nextAllowed[0]} Semester {$nextAllowed[1]}.";
+        upload_redirect('error');
+    }
+}
+
 // ── Read uploaded files ──────────────────────────────────────────────
 function read_upload(string $field): ?array {
     global $maxSingleFileBytes;

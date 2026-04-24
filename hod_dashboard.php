@@ -3,6 +3,8 @@ session_start();
 include('db.php');
 $username = $_SESSION['username'] ?? 'HOD';
 $view     = $_GET['view'] ?? 'overview';
+$batchYearSelected = isset($_GET['year']) ? (int)$_GET['year'] : 0;
+$batchDecadeStart  = isset($_GET['decade']) ? (int)$_GET['decade'] : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -16,6 +18,61 @@ $view     = $_GET['view'] ?? 'overview';
     <link rel="stylesheet" href="style.css">
     <style>
         /* All styles handled by style.css (warm academic theme) */
+        .year-picker-wrap { max-width: 520px; }
+        .year-picker-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 16px;
+            padding: 16px;
+        }
+        .year-picker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .year-nav-btn {
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.05);
+            color: var(--text-dark);
+            border-radius: 10px;
+            width: 34px;
+            height: 34px;
+            line-height: 32px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 700;
+        }
+        .year-picker-title {
+            font-weight: 600;
+            color: var(--text-dark);
+            letter-spacing: 0.3px;
+        }
+        .year-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(80px, 1fr));
+            gap: 10px;
+        }
+        .year-chip {
+            display: block;
+            text-align: center;
+            padding: 10px 8px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text-dark);
+            border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.04);
+            font-weight: 500;
+        }
+        .year-chip.active {
+            background: linear-gradient(135deg, rgba(13,74,69,0.92), rgba(11,105,93,0.92));
+            border-color: rgba(13,74,69,0.95);
+            color: #fff;
+        }
+        .year-chip.muted {
+            opacity: 0.38;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -40,6 +97,7 @@ $view     = $_GET['view'] ?? 'overview';
                 <a href="hod_dashboard.php?view=mca"       class="sidebar-link <?php echo strpos($view,'mca')!==false              ? 'active':''; ?>">MCA</a>
                 <a href="hod_dashboard.php?view=staff"     class="sidebar-link <?php echo $view==='staff'                          ? 'active':''; ?>">Staff</a>
                 <a href="hod_dashboard.php?view=bca"       class="sidebar-link <?php echo $view==='bca'                            ? 'active':''; ?>">BCA</a>
+                <a href="hod_dashboard.php?view=batch"     class="sidebar-link <?php echo $view==='batch'                          ? 'active':''; ?>">Batch</a>
             </aside>
 
             <main class="dashboard-main">
@@ -308,6 +366,107 @@ $view     = $_GET['view'] ?? 'overview';
                     <div class="year-card floating"><h3>BCA 2nd Year</h3><div class="pill-row"><span class="pill">Section A</span><span class="pill">Section B</span></div></div>
                     <div class="year-card floating"><h3>BCA 3rd Year</h3><div class="pill-row"><span class="pill">Section A</span><span class="pill">Section B</span></div></div>
                 </div>
+
+            <?php
+            /* ═══════════════════════════════════════════════════════
+               BATCH — year picker (2000 to current year)
+               Uses 4-digit year found inside reg_no.
+            ═══════════════════════════════════════════════════════ */
+            elseif ($view === 'batch'):
+                $startYear   = 2000;
+                $currentYear = (int)date('Y');
+                $selectedYear = ($batchYearSelected >= $startYear && $batchYearSelected <= $currentYear) ? $batchYearSelected : 0;
+                $defaultDecade = (int)(floor(($selectedYear ?: $currentYear) / 10) * 10);
+                $decadeStart = $batchDecadeStart > 0 ? $batchDecadeStart : $defaultDecade;
+                if ($decadeStart < $startYear) {
+                    $decadeStart = (int)(floor($startYear / 10) * 10);
+                }
+                if ($decadeStart > $currentYear) {
+                    $decadeStart = (int)(floor($currentYear / 10) * 10);
+                }
+                $prevDecade = $decadeStart - 10;
+                $nextDecade = $decadeStart + 10;
+            ?>
+                <h2 class="section-heading">Batch</h2>
+                <p class="sub-heading">Select a batch year to view that year students</p>
+
+                <div class="year-picker-wrap">
+                    <div class="year-picker-card">
+                        <div class="year-picker-header">
+                            <a class="year-nav-btn" href="hod_dashboard.php?view=batch&decade=<?php echo $prevDecade; ?>" aria-label="Previous decade">&#8249;</a>
+                            <div class="year-picker-title"><?php echo $decadeStart; ?> - <?php echo $decadeStart + 11; ?></div>
+                            <a class="year-nav-btn" href="hod_dashboard.php?view=batch&decade=<?php echo $nextDecade; ?>" aria-label="Next decade">&#8250;</a>
+                        </div>
+                        <div class="year-grid">
+                            <?php for ($yr = $decadeStart; $yr <= $decadeStart + 11; $yr++): ?>
+                                <?php $isOutOfRange = ($yr < $startYear || $yr > $currentYear); ?>
+                                <a
+                                    href="hod_dashboard.php?view=batch&year=<?php echo $yr; ?>&decade=<?php echo $decadeStart; ?>"
+                                    class="year-chip <?php echo ($selectedYear === $yr) ? 'active' : ''; ?> <?php echo $isOutOfRange ? 'muted' : ''; ?>"
+                                >
+                                    <?php echo $yr; ?>
+                                </a>
+                            <?php endfor; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <?php if ($selectedYear): ?>
+                    <?php
+                    $allRows = $conn->query(
+                        "SELECT reg_no, student_name, branch, section, year, semester, project_title, guide_name
+                         FROM student_submissions
+                         ORDER BY reg_no ASC"
+                    );
+                    $batchRows = [];
+
+                    if ($allRows) {
+                        while ($r = $allRows->fetch_assoc()) {
+                            $reg = (string)($r['reg_no'] ?? '');
+                            if (preg_match('/\d{4}/', $reg, $m) && (int)$m[0] === $selectedYear) {
+                                $batchRows[] = $r;
+                            }
+                        }
+                    }
+                    ?>
+
+                    <h3 style="color:var(--text-dark);margin-top:32px;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:600;">
+                        Batch <?php echo htmlspecialchars((string)$selectedYear); ?>
+                    </h3>
+
+                    <?php if (empty($batchRows)): ?>
+                        <p class="no-data">No student data found for batch year <?php echo htmlspecialchars((string)$selectedYear); ?>.</p>
+                    <?php else: ?>
+                    <div class="table-container">
+                        <table class="hod-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Reg No</th>
+                                    <th>Student Name</th>
+                                    <th>Course</th>
+                                    <th>Year/Sem</th>
+                                    <th>Project Title</th>
+                                    <th>Guide</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($batchRows as $i => $row): ?>
+                                <tr>
+                                    <td><?php echo $i + 1; ?></td>
+                                    <td><?php echo htmlspecialchars($row['reg_no']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['student_name']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['branch']) . ' Sec ' . htmlspecialchars($row['section']); ?></td>
+                                    <td><?php echo htmlspecialchars((string)$row['year']) . ' / ' . htmlspecialchars((string)$row['semester']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['project_title']); ?></td>
+                                    <td><?php echo htmlspecialchars($row['guide_name']); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <?php endif; ?>
+                <?php endif; ?>
 
             <?php endif; ?>
 
