@@ -54,6 +54,45 @@ if ($view === 'bca' || $view === 'mca') {
 $stmt->execute();
 $submissions = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
+// ── FETCH: Pending approval requests for this guide's students ────────
+$conn->query("CREATE TABLE IF NOT EXISTS update_requests (
+    id INT AUTO_INCREMENT PRIMARY KEY, reg_no VARCHAR(50) NOT NULL,
+    request_type ENUM('files','details') NOT NULL, reason TEXT NOT NULL,
+    status ENUM('pending','approved','rejected') DEFAULT 'pending',
+    guide_remark TEXT DEFAULT NULL, requested_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    actioned_at DATETIME DEFAULT NULL, used TINYINT(1) DEFAULT 0,
+    INDEX (reg_no), INDEX (status)
+)");
+
+// ── HANDLE: Approve / Reject a request ───────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_request'])) {
+    $reqId   = (int)$_POST['req_id'];
+    $action  = $_POST['req_action']; // 'approved' or 'rejected'
+    $remark  = trim($_POST['guide_remark'] ?? '');
+    if (in_array($action, ['approved','rejected'])) {
+        $upd = $conn->prepare("UPDATE update_requests SET status=?, guide_remark=?, actioned_at=NOW() WHERE id=?");
+        $upd->bind_param('ssi', $action, $remark, $reqId);
+        $upd->execute();
+    }
+    header("Location: staff_dashboard.php?view=$view");
+    exit;
+}
+
+// Get student reg_nos for this guide
+$myRegNos = array_column($submissions, 'reg_no');
+$pendingRequests = [];
+if (!empty($myRegNos)) {
+    $placeholders = implode(',', array_fill(0, count($myRegNos), '?'));
+    $types = str_repeat('s', count($myRegNos));
+    $rStmt = $conn->prepare("SELECT r.*, s.student_name FROM update_requests r
+        LEFT JOIN student_submissions s ON s.reg_no = r.reg_no
+        WHERE r.reg_no IN ($placeholders) AND r.status='pending' AND r.used=0
+        ORDER BY r.requested_at ASC");
+    $rStmt->bind_param($types, ...$myRegNos);
+    $rStmt->execute();
+    $pendingRequests = $rStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+}
+
 // ── FETCH: ALL uploads from student_uploads, keyed by reg_no ──────────
 // We query ALL uploads — no guide filter — match by reg_no
 $uploadMap = [];  // reg_no => latest upload row
@@ -318,9 +357,15 @@ $semLabels = [
     <div class="dashboard-layout">
         <aside class="sidebar">
             <div class="sidebar-title">Students</div>
-            <a href="staff_dashboard.php?view=overview" class="sidebar-link <?php echo $view==='overview'?'active':''; ?>">My Students</a>
             <a href="staff_dashboard.php?view=mca"      class="sidebar-link <?php echo $view==='mca'     ?'active':''; ?>">MCA Students</a>
             <a href="staff_dashboard.php?view=bca"      class="sidebar-link <?php echo $view==='bca'     ?'active':''; ?>">BCA Students</a>
+            <a href="staff_dashboard.php?view=approvals" class="sidebar-link <?php echo $view==='approvals'?'active':''; ?>"
+               style="<?php echo count($pendingRequests)>0?'color:#fca5a5;font-weight:600;':''; ?>">
+                Approvals
+                <?php if(count($pendingRequests)>0): ?>
+                <span style="display:inline-flex;align-items:center;justify-content:center;background:#dc2626;color:#fff;border-radius:100px;font-size:0.65rem;font-weight:700;padding:1px 6px;margin-left:5px;"><?php echo count($pendingRequests); ?></span>
+                <?php endif; ?>
+            </a>
             <div style="margin-top:40px;border-top:1px solid rgba(255,255,255,0.10);padding-top:16px;">
                 <p style="font-size:0.68em;color:rgba(255,255,255,0.35);padding-left:18px;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:6px;">Export All</p>
                 <?php $rp = ($view==='overview')?'ALL':strtoupper($view); ?>
@@ -380,7 +425,65 @@ $semLabels = [
                 </button>
             </div>
 
-            <!-- ══ ALL STUDENTS TAB ══ -->
+            <?php if($view === 'approvals'): ?>
+            <!-- ══ APPROVALS VIEW ══ -->
+            <h2 class="section-heading" style="margin-bottom:2px;">Student Update Requests</h2>
+            <p class="sub-heading"><?php echo count($pendingRequests); ?> pending approval<?php echo count($pendingRequests)!==1?'s':''; ?></p>
+
+            <?php if(empty($pendingRequests)): ?>
+            <div style="text-align:center;padding:56px;background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-sm);">
+                <div style="font-size:2.5rem;margin-bottom:12px;"></div>
+                <div style="font-weight:600;color:var(--text-dark);font-size:1rem;">No pending requests</div>
+                <div style="color:var(--text-muted);font-size:0.86rem;margin-top:4px;">All student requests have been actioned.</div>
+            </div>
+            <?php else: ?>
+            <?php foreach($pendingRequests as $req): ?>
+            <div style="background:#fff;border:1px solid var(--border);border-left:4px solid #f59e0b;border-radius:12px;padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow-sm);">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                    <div>
+                        <div style="font-weight:700;color:var(--text-dark);font-size:0.95rem;"><?php echo htmlspecialchars($req['student_name'] ?? $req['reg_no']); ?></div>
+                        <div style="font-size:0.78rem;color:var(--text-muted);margin-top:2px;"><?php echo htmlspecialchars($req['reg_no']); ?> &nbsp;·&nbsp;
+                            <?php echo date('d M Y, h:i A', strtotime($req['requested_at'])); ?>
+                            <?php if(!empty($req['semester_key'])): ?>
+                            &nbsp;·&nbsp; <strong style="color:var(--green-dark);">Sem: <?php echo htmlspecialchars($req['semester_key']); ?></strong>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:0.76rem;font-weight:700;border:1px solid;
+                        <?php echo $req['request_type']==='files'?'background:#eff6ff;color:#1d4ed8;border-color:#93c5fd;':'background:#f0fdf4;color:#166534;border-color:#86efac;'; ?>">
+                        <?php echo $req['request_type']==='files' ? '📁 File Resubmission' : '📝 Details Update'; ?>
+                    </span>
+                </div>
+                <div style="background:#fafbfc;border:1px solid var(--border-light);border-radius:8px;padding:10px 14px;margin-bottom:14px;">
+                    <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-faint);margin-bottom:4px;">Student's Reason</div>
+                    <div style="font-size:0.88rem;color:var(--text-body);"><?php echo htmlspecialchars($req['reason']); ?></div>
+                </div>
+                <form method="POST" action="staff_dashboard.php?view=approvals" style="display:flex;flex-direction:column;gap:10px;">
+                    <input type="hidden" name="action_request" value="1">
+                    <input type="hidden" name="req_id" value="<?php echo $req['id']; ?>">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.82rem;font-weight:600;color:var(--text-body);margin-bottom:5px;display:block;">Remark (optional — shown to student)</label>
+                        <input type="text" name="guide_remark" placeholder="e.g. Approved, update title carefully / Rejected, changes not allowed at this stage"
+                               style="width:100%;padding:8px 12px;border-radius:7px;border:1.5px solid var(--border);font-size:0.88rem;font-family:'Inter',sans-serif;outline:none;">
+                    </div>
+                    <div style="display:flex;gap:10px;">
+                        <button type="submit" name="req_action" value="approved"
+                                style="flex:1;padding:9px;border-radius:8px;border:none;background:#16a34a;color:#fff;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity 0.15s;"
+                                onmouseover="this.style.opacity=0.85" onmouseout="this.style.opacity=1">
+                            Approve
+                        </button>
+                        <button type="submit" name="req_action" value="rejected"
+                                style="flex:1;padding:9px;border-radius:8px;border:1px solid #fca5a5;background:#fff;color:#dc2626;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity 0.15s;"
+                                onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">
+                            Reject
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <?php endforeach; ?>
+            <?php endif; ?>
+
+            <?php else: ?>
             <div id="tab-all" class="tab-section" style="display:<?php echo $active_tab==='all'?'block':'none'; ?>;">
                 <?php foreach ($submissions as $row): ?>
                 <div class="student-card <?php echo empty($row['upload_id']) ? 'no-upload' : ''; ?>">
@@ -559,6 +662,8 @@ $semLabels = [
                 <?php endif; ?>
             </div>
 
+            <?php endif; // end approvals vs students view ?>
+
         </main>
     </div>
 </div>
@@ -595,7 +700,7 @@ $semLabels = [
                 <textarea name="notes" rows="3" placeholder="Enter review feedback..."></textarea>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-link modal-close">Cancel</button>
+                <button type="button" class="modal-close" style="padding:9px 20px;border-radius:7px;border:2px solid var(--border-strong, #94a3b8);background:#f1f5f9;color:#334155;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:inherit;transition:background 0.15s;">Cancel</button>
                 <button type="submit" name="update_marks" class="btn-gradient">Save</button>
             </div>
         </form>
