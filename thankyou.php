@@ -17,11 +17,22 @@ function flash_redirect($type, $msg) {
 }
 
 
+<<<<<<< HEAD
+=======
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['initial_submit'])) {
+    $reg_no   = trim($_POST['reg_no']);
+    $year     = trim($_POST['year']);
+    $semester = trim($_POST['semester']);
+
+>>>>>>> c96bab7 (Modified)
     $chk = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no=? AND year=? AND semester=?");
     $chk->bind_param("sss", $reg_no, $year, $semester);
     $chk->execute();
     $res = $chk->get_result();
+<<<<<<< HEAD
 
+=======
+>>>>>>> c96bab7 (Modified)
 // Enforce branch/year from registration series:
 // FJ => BCA (1,2,3), FD => MCA (1,2)
 $letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
