@@ -138,8 +138,15 @@ foreach ($uploads as $u) {
 
 $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 foreach ($uploads as $u) {
-    $y = ($u['academic_year'] == 'Year 1') ? '1' : '2';
-    $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
+    $ay = trim((string)($u['academic_year'] ?? ''));
+    if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
+        $y = $m[1];
+    } elseif (in_array($ay, ['1', '2', '3'], true)) {
+        $y = $ay;
+    } else {
+        $y = '2';
+    }
+    $s = strlen((string)$u['semester']) <= 2 ? strtoupper((string)$u['semester']) : (string)$u['semester'];
     $fileUploadKeys[] = $y . '|' . $s;
 
 }
