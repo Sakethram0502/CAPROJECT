@@ -113,6 +113,29 @@ $fileUploadKeys = [];
 $uploadStmt = $conn->prepare("SELECT academic_year, semester FROM student_uploads WHERE reg_no = ?");
 $uploadStmt->bind_param("s", $regNo);
 $uploadStmt->execute();
+
+$uploadRows = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$uploadedSlots = [];
+foreach ($uploadRows as $row) {
+    $academicYear = (string)($row['academic_year'] ?? '');
+    $semesterVal  = strtoupper(trim((string)($row['semester'] ?? '')));
+    if (preg_match('/(\d+)/', $academicYear, $m) && in_array($semesterVal, ['I', 'II'], true)) {
+        $uploadedSlots[] = $m[1] . '|' . $semesterVal;
+    }
+
+$uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+foreach ($uploads as $u) {
+    $ay = trim((string)($u['academic_year'] ?? ''));
+    if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
+        $y = $m[1];
+    } elseif (in_array($ay, ['1', '2', '3'], true)) {
+        $y = $ay;
+    } else {
+        $y = '2';
+    }
+    $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
+    $fileUploadKeys[] = $y . '|' . $s;
+
 $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 foreach ($uploads as $u) {
     $ay = trim((string)($u['academic_year'] ?? ''));
@@ -125,6 +148,7 @@ foreach ($uploads as $u) {
     }
     $s = strlen((string)$u['semester']) <= 2 ? strtoupper((string)$u['semester']) : (string)$u['semester'];
     $fileUploadKeys[] = $y . '|' . $s;
+
 }
 $uploadStmt->close();
 ?>
