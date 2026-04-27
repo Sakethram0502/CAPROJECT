@@ -33,9 +33,11 @@ if ($format === 'excel') {
     header("Content-Type: application/vnd.ms-excel");
     header("Content-Disposition: attachment; filename=\"$filename\"");
     
-    echo "Branch\tReg No\tName\tDomain\tR1 Marks\tR1 Remarks\tR2 Marks\tR2 Remarks\tR3 Marks\tR3 Remarks\tR4 Marks\tR4 Remarks\tR5 Marks\tR5 Remarks\n";
+    echo "Branch\tReg No\tName\tSection\tYear\tSemester\tDomain\tProject Title\tR1 Marks\tR1 Remarks\tR2 Marks\tR2 Remarks\tR3 Marks\tR3 Remarks\tR4 Marks\tR4 Remarks\tR5 Marks\tR5 Remarks\n";
     foreach ($reportData as $row) {
-        echo $row['branch']."\t".$row['reg_no']."\t".$row['student_name']."\t".$row['domain']."\t".
+        echo $row['branch']."\t".$row['reg_no']."\t".$row['student_name']."\t".
+             ($row['section']??'—')."\t".($row['year']??'—')."\t".$row['semester']."\t".
+             ($row['domain']??'—')."\t".($row['project_title']??'—')."\t".
              ($row['r1_marks']??'0')."\t".($row['r1_notes']??'-')."\t".
              ($row['r2_marks']??'0')."\t".($row['r2_notes']??'-')."\t".
              ($row['r3_marks']??'0')."\t".($row['r3_notes']??'-')."\t".
@@ -80,7 +82,8 @@ if ($format === 'excel') {
                 <th style="width: 40px;">Branch</th>
                 <th style="width: 70px;">Reg No</th>
                 <th style="width: 90px;">Student Name</th>
-                <th>Domain & Title</th>
+                <th style="width: 60px;">Domain</th>
+                <th>Project Title</th>
                 <th>R1 (M/R)</th><th>R2 (M/R)</th><th>R3 (M/R)</th><th>R4 (M/R)</th><th>R5 (M/R)</th>
             </tr>
         </thead>
@@ -90,7 +93,8 @@ if ($format === 'excel') {
                 <td class="branch-tag"><?php echo $row['branch']; ?></td>
                 <td><strong><?php echo $row['reg_no']; ?></strong></td>
                 <td><?php echo htmlspecialchars($row['student_name']); ?></td>
-                <td><strong><?php echo htmlspecialchars($row['domain']); ?></strong>: <?php echo htmlspecialchars($row['project_title']); ?></td>
+                <td><strong><?php echo htmlspecialchars($row['domain']); ?></strong></td>
+                <td><?php echo htmlspecialchars($row['project_title']); ?></td>
                 <td><?php echo $row['r1_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r1_notes']?:'-'); ?></span></td>
                 <td><?php echo $row['r2_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r2_notes']?:'-'); ?></span></td>
                 <td><?php echo $row['r3_marks']?:'0'; ?><span class="notes"><?php echo htmlspecialchars($row['r3_notes']?:'-'); ?></span></td>
