@@ -4,7 +4,7 @@
 $db_host = 'localhost';
 $db_user = 'root';
 $db_pass = ''; // Adjust if your MySQL root user has a password
-$db_name = 'caproject';
+$db_name = 'ca_project';
 
 $conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
 

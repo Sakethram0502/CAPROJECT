@@ -136,15 +136,13 @@ foreach ($uploads as $u) {
     $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
     $fileUploadKeys[] = $y . '|' . $s;
 
-<<<<<<< HEAD
+
 $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 foreach ($uploads as $u) {
     $y = ($u['academic_year'] == 'Year 1') ? '1' : '2';
     $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
     $fileUploadKeys[] = $y . '|' . $s;
 
-=======
->>>>>>> c96bab7 (Modified)
 }
 $uploadStmt->close();
 ?>
@@ -408,11 +406,7 @@ $uploadStmt->close();
                 <input type="hidden" name="reg_no"   value="<?php echo htmlspecialchars($regNo); ?>">
                 <input type="hidden" name="section"  value="<?php echo htmlspecialchars($prefill['section'] ?? ''); ?>">
 
-<<<<<<< HEAD
 
-=======
-                <!-- Year + Semester visible to student -->
->>>>>>> c96bab7 (Modified)
                 <div class="form-group">
                     <label for="ul_branch">Branch</label>
                     <select id="ul_branch" name="branch" required>

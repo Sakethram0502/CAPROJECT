@@ -22,10 +22,7 @@ $year        = trim($_POST['year']         ?? '');   // "1" or "2"
 $section     = trim($_POST['section']      ?? '');
 $semester    = trim($_POST['semester']     ?? '');   // "I" or "II"
 
-<<<<<<< HEAD
 
-=======
->>>>>>> c96bab7 (Modified)
 // academic_year built from year  e.g. "2nd Year"
 $yearLabel   = ($year === '1') ? '1st Year' : (($year === '2') ? '2nd Year' : $year);
 
@@ -33,10 +30,7 @@ $yearLabel   = ($year === '1') ? '1st Year' : (($year === '2') ? '2nd Year' : $y
 if ($regNo === '' || $branch === '' || $year === '' || $semester === '') {
     $_SESSION['upload_flash'] = 'Please fill in Year and Semester before uploading.';
     upload_redirect('error');
-<<<<<<< HEAD
 
-=======
->>>>>>> c96bab7 (Modified)
 // Enforce branch/year from registration series:
 // FJ => BCA (1,2,3), FD => MCA (1,2)
 $letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
@@ -49,26 +43,23 @@ $allowedYears = ($expectedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
 // Basic validation
 if (empty($regNo) || empty($year) || empty($semester)) {
     upload_flash('Please fill Year and Semester.');
-<<<<<<< HEAD
 
-=======
->>>>>>> c96bab7 (Modified)
 }
 if ($branch !== $expectedBranch || !in_array($year, $allowedYears, true)) {
     upload_flash('Invalid branch/year for this registration number.');
 }
 
-<<<<<<< HEAD
+
 
 if (!in_array($semester, ['I', 'II'], true) || !in_array($year, ['1', '2', '3'], true)) {
     $_SESSION['upload_flash'] = 'Invalid Year/Semester selected.';
     upload_redirect('error');
 
-=======
+
 if (!in_array($semester, ['I', 'II'], true) || !in_array($year, ['1', '2', '3'], true)) {
     $_SESSION['upload_flash'] = 'Invalid Year/Semester selected.';
     upload_redirect('error');
->>>>>>> c96bab7 (Modified)
+
 // ✅ PERFECT Semester/Year normalization to match ALL database formats
 $yearLabel = ($year == '1' || $year == 'Year 1') ? 'Year 1' :
              (($year == '2' || $year == 'Year 2') ? 'Year 2' :
@@ -98,10 +89,7 @@ if (strpos($semester, 'Semester') !== false) {
     $semDbFormat = strtoupper($semester); // "I", "II" → "II"
 } else {
     $semDbFormat = trim($semester);
-<<<<<<< HEAD
 
-=======
->>>>>>> c96bab7 (Modified)
 }
 
 $semKey = $year . '|' . $semester; // For update_requests table
