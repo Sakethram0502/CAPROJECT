@@ -15,19 +15,19 @@ function flash_redirect($type, $msg) {
     header('Location: student_dashboard.php');
     exit;
 }
+// ── Get fields ───────────────────────────────────────────────────────
+$regNo        = trim($_POST['reg_no'] ?? '');
+$studentName  = trim($_POST['student_name'] ?? '');
+$branch       = strtoupper(trim($_POST['branch'] ?? ''));
+$year         = trim($_POST['year'] ?? '');
+$section      = trim($_POST['section'] ?? '');
+$semester     = trim($_POST['semester'] ?? '');
+$domain       = trim($_POST['domain'] ?? '');
+$projectTitle = trim($_POST['project_title'] ?? '');
+$guideName    = trim($_POST['guide_name'] ?? '');
 
-
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['initial_submit'])) {
-    $reg_no   = trim($_POST['reg_no']);
-    $year     = trim($_POST['year']);
-    $semester = trim($_POST['semester']);
-
-
-    $chk = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no=? AND year=? AND semester=?");
-    $chk->bind_param("sss", $reg_no, $year, $semester);
-    $chk->execute();
-    $res = $chk->get_result();
+$semKey = $year . '|' . $semester;
+$type   = 'details';
 
 // Enforce branch/year from registration series:
 // FJ => BCA (1,2,3), FD => MCA (1,2)
@@ -38,21 +38,6 @@ $track = implode('', $lettersArray);
 $expectedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
 $allowedYears = ($expectedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
 
-// ── Get fields ───────────────────────────────────────────────────────
-$regNo       = trim($_POST['reg_no'] ?? '');
-$studentName = trim($_POST['student_name'] ?? '');
-$branch      = strtoupper(trim($_POST['branch'] ?? ''));
-$year        = trim($_POST['year'] ?? '');
-$section     = trim($_POST['section'] ?? '');
-$semester    = trim($_POST['semester'] ?? '');
-$domain      = trim($_POST['domain'] ?? '');
-$projectTitle = trim($_POST['project_title'] ?? '');
-$guideName   = trim($_POST['guide_name'] ?? '');
-
-$semKey      = $year . '|' . $semester;
-$type        = 'details';
-
-
 // Validation
 if ($regNo === '' || $studentName === '' || $branch === '' || $year === '' || $semester === '' ||
     $section === '' || $domain === '' || $projectTitle === '' || $guideName === '') {
@@ -62,7 +47,6 @@ if ($regNo === '' || $studentName === '' || $branch === '' || $year === '' || $s
 if ($branch !== $expectedBranch || !in_array($year, $allowedYears, true)) {
     flash_redirect('warn', '⚠️ Invalid branch/year for this registration number.');
 }
-
 
 // Ensure table exists
 $conn->query("CREATE TABLE IF NOT EXISTS update_requests (
@@ -96,11 +80,13 @@ if ($exists) {
     $row = $reqStmt->get_result()->fetch_assoc();
 
     if (!$row || $row['status'] !== 'approved' || $row['used'] == 1) {
-        flash_redirect('warn',
+        flash_redirect(
+            'warn',
             "⚠️ You have already submitted for Year $year Semester $semester. " .
             "Please send an approval request to your guide for this semester to update."
         );
     }
+
     // Mark this request as used so next update is blocked until new request
     $upd = $conn->prepare("UPDATE update_requests SET used = 1 WHERE id = ?");
     $upd->bind_param('i', $row['id']);
@@ -125,14 +111,30 @@ if (!$stmt) {
 }
 
 if (!$exists) {
-    $stmt->bind_param('sssssssss',
-        $regNo, $studentName, $branch, $year, $section, $semester,
-        $domain, $projectTitle, $guideName
+    $stmt->bind_param(
+        'sssssssss',
+        $regNo,
+        $studentName,
+        $branch,
+        $year,
+        $section,
+        $semester,
+        $domain,
+        $projectTitle,
+        $guideName
     );
 } else {
-    $stmt->bind_param('sssssssss',
-        $studentName, $branch, $section, $domain, $projectTitle, $guideName,
-        $regNo, $year, $semester
+    $stmt->bind_param(
+        'sssssssss',
+        $studentName,
+        $branch,
+        $section,
+        $domain,
+        $projectTitle,
+        $guideName,
+        $regNo,
+        $year,
+        $semester
     );
 }
 
