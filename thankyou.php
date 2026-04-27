@@ -16,6 +16,21 @@ function flash_redirect($type, $msg) {
     exit;
 }
 
+
+    $chk = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no=? AND year=? AND semester=?");
+    $chk->bind_param("sss", $reg_no, $year, $semester);
+    $chk->execute();
+    $res = $chk->get_result();
+
+// Enforce branch/year from registration series:
+// FJ => BCA (1,2,3), FD => MCA (1,2)
+$letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
+$lettersArray = str_split($letters);
+sort($lettersArray);
+$track = implode('', $lettersArray);
+$expectedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
+$allowedYears = ($expectedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
+
 // ── Get fields ───────────────────────────────────────────────────────
 $regNo       = trim($_POST['reg_no'] ?? '');
 $studentName = trim($_POST['student_name'] ?? '');
@@ -30,11 +45,17 @@ $guideName   = trim($_POST['guide_name'] ?? '');
 $semKey      = $year . '|' . $semester;
 $type        = 'details';
 
+
 // Validation
 if ($regNo === '' || $studentName === '' || $branch === '' || $year === '' || $semester === '' ||
     $section === '' || $domain === '' || $projectTitle === '' || $guideName === '') {
     flash_redirect('warn', '⚠️ Please fill in all required fields.');
 }
+
+if ($branch !== $expectedBranch || !in_array($year, $allowedYears, true)) {
+    flash_redirect('warn', '⚠️ Invalid branch/year for this registration number.');
+}
+
 
 // Ensure table exists
 $conn->query("CREATE TABLE IF NOT EXISTS update_requests (

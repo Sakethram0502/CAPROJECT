@@ -9,6 +9,21 @@ if (!isset($_SESSION['student_reg_no'])) {
 
 $regNo = $_SESSION['student_reg_no'];
 
+
+// Fetch existing submissions for pre-fill and duplicate check
+
+// Identify track from login-reg format:
+// FJ => BCA (Years 1-3), FD => MCA (Years 1-2)
+$track = $_SESSION['student_track'] ?? '';
+if ($track !== 'fj' && $track !== 'df') {
+    $letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
+    $lettersArray = str_split($letters);
+    sort($lettersArray);
+    $track = implode('', $lettersArray);
+}
+$allowedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
+$allowedYears = ($allowedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
+
 // ── Ensure approval table exists ─────────────────────────────────────
 $conn->query("CREATE TABLE IF NOT EXISTS update_requests (
     id            INT AUTO_INCREMENT PRIMARY KEY,
@@ -50,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_approval'])) 
 }
 
 // ── Fetch project submissions ────────────────────────────────────────
+
 $stmt = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no = ? ORDER BY year, semester ASC");
 $stmt->bind_param("s", $regNo);
 $stmt->execute();
@@ -97,11 +113,35 @@ $fileUploadKeys = [];
 $uploadStmt = $conn->prepare("SELECT academic_year, semester FROM student_uploads WHERE reg_no = ?");
 $uploadStmt->bind_param("s", $regNo);
 $uploadStmt->execute();
+
+$uploadRows = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$uploadedSlots = [];
+foreach ($uploadRows as $row) {
+    $academicYear = (string)($row['academic_year'] ?? '');
+    $semesterVal  = strtoupper(trim((string)($row['semester'] ?? '')));
+    if (preg_match('/(\d+)/', $academicYear, $m) && in_array($semesterVal, ['I', 'II'], true)) {
+        $uploadedSlots[] = $m[1] . '|' . $semesterVal;
+    }
+
+$uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+foreach ($uploads as $u) {
+    $ay = trim((string)($u['academic_year'] ?? ''));
+    if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
+        $y = $m[1];
+    } elseif (in_array($ay, ['1', '2', '3'], true)) {
+        $y = $ay;
+    } else {
+        $y = '2';
+    }
+    $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
+    $fileUploadKeys[] = $y . '|' . $s;
+
 $uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 foreach ($uploads as $u) {
     $y = ($u['academic_year'] == 'Year 1') ? '1' : '2';
     $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
     $fileUploadKeys[] = $y . '|' . $s;
+
 }
 $uploadStmt->close();
 ?>
@@ -279,17 +319,16 @@ $uploadStmt->close();
                     <div class="form-group" style="flex:1;">
                         <label for="branch">Branch</label>
                         <select id="branch" name="branch" required>
-                            <option value="">-- Select --</option>
-                            <option value="BCA" <?php echo ($prefill['branch']??'')==='BCA'?'selected':''; ?>>BCA</option>
-                            <option value="MCA" <?php echo ($prefill['branch']??'')==='MCA'||empty($prefill)?'selected':''; ?>>MCA</option>
+                            <option value="<?php echo $allowedBranch; ?>" selected><?php echo $allowedBranch; ?></option>
                         </select>
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label for="year">Year</label>
                         <select id="year" name="year" required onchange="updateSemester()">
                             <option value="">-- Select Year --</option>
-                            <option value="1" <?php echo ($prefill['year']??'')==='1'?'selected':''; ?>>Year 1</option>
-                            <option value="2" <?php echo ($prefill['year']??'')==='2'?'selected':''; ?>>Year 2</option>
+                            <?php foreach ($allowedYears as $yr): ?>
+                            <option value="<?php echo $yr; ?>" <?php echo ($prefill['year'] ?? '') === $yr ? 'selected' : ''; ?>>Year <?php echo $yr; ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -364,16 +403,24 @@ $uploadStmt->close();
 
             <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data" id="files-form">
                 <input type="hidden" name="reg_no"   value="<?php echo htmlspecialchars($regNo); ?>">
-                <input type="hidden" name="branch"   value="<?php echo htmlspecialchars($prefill['branch'] ?? 'MCA'); ?>">
                 <input type="hidden" name="section"  value="<?php echo htmlspecialchars($prefill['section'] ?? ''); ?>">
+
+
+                <div class="form-group">
+                    <label for="ul_branch">Branch</label>
+                    <select id="ul_branch" name="branch" required>
+                        <option value="<?php echo $allowedBranch; ?>" selected><?php echo $allowedBranch; ?></option>
+                    </select>
+                </div>
 
                 <div style="display:flex;gap:14px;">
                     <div class="form-group" style="flex:1;">
                         <label for="ul_year">Year</label>
                         <select id="ul_year" name="year" required onchange="updateUploadSem()">
                             <option value="">-- Select --</option>
-                            <option value="1">Year 1</option>
-                            <option value="2">Year 2</option>
+                            <?php foreach ($allowedYears as $yr): ?>
+                            <option value="<?php echo $yr; ?>">Year <?php echo $yr; ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group" style="flex:1;">
