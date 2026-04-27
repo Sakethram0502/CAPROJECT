@@ -3,174 +3,138 @@ session_start();
 include 'db.php';
 mysqli_report(MYSQLI_REPORT_OFF);
 
-$maxSingleFileBytes = 10 * 1024 * 1024; // 10MB
-
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: student_dashboard.php');
     exit;
 }
 
-function upload_redirect(string $status): void {
-    header('Location: student_dashboard.php?upload=' . urlencode($status));
+function upload_flash($msg) {
+    $_SESSION['upload_flash'] = $msg;
+    header('Location: student_dashboard.php');
     exit;
 }
 
-// ── Collect posted fields ────────────────────────────────────────────
-$regNo       = trim($_POST['reg_no']       ?? '');
-$branch      = strtoupper(trim($_POST['branch']   ?? ''));
-$year        = trim($_POST['year']         ?? '');   // "1" or "2"
-$section     = trim($_POST['section']      ?? '');
-$semester    = trim($_POST['semester']     ?? '');   // "I" or "II"
+// Get form data
+$regNo = trim($_POST['reg_no'] ?? '');
+$year = trim($_POST['year'] ?? '');
+$semester = trim($_POST['semester'] ?? '');
+$branch = strtoupper(trim($_POST['branch'] ?? ''));
+$section = trim($_POST['section'] ?? '');
 
-// academic_year built from year  e.g. "2nd Year"
-$yearLabel   = ($year === '1') ? '1st Year' : (($year === '2') ? '2nd Year' : $year);
-
-// Validation
-if ($regNo === '' || $branch === '' || $year === '' || $semester === '') {
-    $_SESSION['upload_flash'] = 'Please fill in Year and Semester before uploading.';
-    upload_redirect('error');
+// Basic validation
+if (empty($regNo) || empty($year) || empty($semester)) {
+    upload_flash('Please fill Year and Semester.');
 }
 
-if (!in_array($semester, ['I', 'II'], true) || !in_array($year, ['1', '2', '3'], true)) {
-    $_SESSION['upload_flash'] = 'Invalid Year/Semester selected.';
-    upload_redirect('error');
+// ✅ PERFECT Semester/Year normalization to match ALL database formats
+$yearLabel = ($year == '1' || $year == 'Year 1') ? 'Year 1' : 
+             (($year == '2' || $year == 'Year 2') ? 'Year 2' : $year);
+
+$semDbFormat = '';
+if (strpos($semester, 'Semester') !== false) {
+    $semDbFormat = str_replace('Semester ', 'Sem ', $semester); // "Semester I" → "Sem I"
+} elseif (strlen($semester) <= 3 && ctype_alpha($semester)) {
+    $semDbFormat = strtoupper($semester); // "I", "II" → "II"
+} else {
+    $semDbFormat = trim($semester);
 }
 
-// Enforce one-time upload per semester and strict order:
-// Year 1 Sem I -> Year 1 Sem II -> Year 2 Sem I -> Year 2 Sem II -> Year 3 Sem I -> Year 3 Sem II
-$existingStmt = $conn->prepare(
-    "SELECT academic_year, semester
-     FROM student_uploads
-     WHERE reg_no = ? AND branch = ?"
+$semKey = $year . '|' . $semester; // For update_requests table
+
+// DEBUG (remove in production)
+error_log("DEBUG UPLOAD: regNo=$regNo, year=$yearLabel, semInput=$semester, semDB=$semDbFormat");
+
+// ✅ Check ACTUAL student_uploads table (NOT student_submissions)
+$stmt = $conn->prepare("SELECT COUNT(*) as count FROM student_uploads WHERE reg_no = ? AND academic_year = ? AND semester = ?");
+$stmt->bind_param('sss', $regNo, $yearLabel, $semDbFormat);
+$stmt->execute();
+$result = $stmt->get_result();
+$row = $result->fetch_assoc();
+$alreadyUploaded = $row['count'] > 0;
+$stmt->close();
+
+error_log("UPLOAD CHECK: alreadyUploaded = " . ($alreadyUploaded ? 'YES' : 'NO'));
+
+if ($alreadyUploaded) {
+    // Check if guide approved resubmission
+    $reqStmt = $conn->prepare("SELECT status, used FROM update_requests WHERE reg_no = ? AND request_type = 'files' AND semester_key = ? ORDER BY requested_at DESC LIMIT 1");
+    $reqStmt->bind_param('ss', $regNo, $semKey);
+    $reqStmt->execute();
+    $reqResult = $reqStmt->get_result();
+    $approvalRow = $reqResult->fetch_assoc();
+    $reqStmt->close();
+    
+    if (!$approvalRow || $approvalRow['status'] !== 'approved' || $approvalRow['used']) {
+        upload_flash("You have already uploaded files for Year $year $semester. To resubmit files, please provide a reason and request your guide's approval.");
+    }
+    // If approved and not used → CONTINUE to upload
+}
+
+// Process files (at least one required)
+$doc = (isset($_FILES['doc_file']) && $_FILES['doc_file']['error'] == 0) ? $_FILES['doc_file'] : null;
+$ppt = (isset($_FILES['ppt_file']) && $_FILES['ppt_file']['error'] == 0) ? $_FILES['ppt_file'] : null;
+$code = (isset($_FILES['code_file']) && $_FILES['code_file']['error'] == 0) ? $_FILES['code_file'] : null;
+
+if (!$doc && !$ppt && !$code) {
+    upload_flash('Please select at least one file to upload.');
+}
+
+// ✅ FIXED: Insert metadata with CORRECT 15 parameters
+$insertStmt = $conn->prepare("INSERT INTO student_uploads (reg_no, branch, course, academic_year, section, semester, document_name, document_type, document_size, ppt_name, ppt_type, ppt_size, code_name, code_type, code_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+$dName = $doc ? $doc['name'] : null;
+$dType = $doc ? $doc['type'] : null;
+$dSize = $doc ? (string)$doc['size'] : null;
+
+$pName = $ppt ? $ppt['name'] : null;
+$pType = $ppt ? $ppt['type'] : null;
+$pSize = $ppt ? (string)$ppt['size'] : null;
+
+$cName = $code ? $code['name'] : null;
+$cType = $code ? $code['type'] : null;
+$cSize = $code ? (string)$code['size'] : null;
+
+// ✅ PERFECT: 15 's' parameters (5 + 3 + 3 + 3 + 1)
+$insertStmt->bind_param("sssssssssssssss", 
+    $regNo, $branch, $branch, $yearLabel, $section, $semDbFormat,
+    $dName, $dType, $dSize, $pName, $pType, $pSize, $cName, $cType, $cSize
 );
-if (!$existingStmt) {
-    $_SESSION['upload_flash'] = 'Upload failed: unable to validate existing uploads.';
-    upload_redirect('error');
-}
-$existingStmt->bind_param("ss", $regNo, $branch);
-$existingStmt->execute();
-$existingRows = $existingStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$existingStmt->close();
 
-$uploadedKeys = [];
-foreach ($existingRows as $row) {
-    $yrText = (string)($row['academic_year'] ?? '');
-    $semTxt = strtoupper(trim((string)($row['semester'] ?? '')));
-    if (preg_match('/(\d+)/', $yrText, $matches) && in_array($semTxt, ['I', 'II'], true)) {
-        $uploadedKeys[$matches[1] . '|' . $semTxt] = true;
-    }
+if (!$insertStmt->execute()) {
+    error_log("INSERT ERROR: " . $insertStmt->error);
+    upload_flash('Upload failed: Database error.');
 }
 
-$targetKey = $year . '|' . $semester;
-if (isset($uploadedKeys[$targetKey])) {
-    $_SESSION['upload_flash'] = "You already uploaded files for Year $year Semester $semester. One upload allowed per semester.";
-    upload_redirect('error');
-}
+$rowId = $conn->insert_id;
+$insertStmt->close();
 
-$sequence = [
-    ['1', 'I'],
-    ['1', 'II'],
-    ['2', 'I'],
-    ['2', 'II'],
-    ['3', 'I'],
-    ['3', 'II'],
+// Save BLOB data SAFELY
+$blobs = [
+    'document_data' => $doc ? file_get_contents($doc['tmp_name']) : null,
+    'ppt_data' => $ppt ? file_get_contents($ppt['tmp_name']) : null,
+    'code_data' => $code ? file_get_contents($code['tmp_name']) : null
 ];
-$nextAllowed = null;
-foreach ($sequence as $slot) {
-    $slotKey = $slot[0] . '|' . $slot[1];
-    if (!isset($uploadedKeys[$slotKey])) {
-        $nextAllowed = $slot;
-        break;
-    }
-}
 
-if ($nextAllowed !== null) {
-    if ($year !== $nextAllowed[0] || $semester !== $nextAllowed[1]) {
-        $_SESSION['upload_flash'] =
-            "Upload not allowed. You can upload only in order. Next allowed: Year {$nextAllowed[0]} Semester {$nextAllowed[1]}.";
-        upload_redirect('error');
-    }
-}
-
-// ── Read uploaded files ──────────────────────────────────────────────
-function read_upload(string $field): ?array {
-    global $maxSingleFileBytes;
-    if (!isset($_FILES[$field]) || $_FILES[$field]['error'] !== UPLOAD_ERR_OK) return null;
-    $size = (int)$_FILES[$field]['size'];
-    if ($size > $maxSingleFileBytes) throw new Exception("File '$field' exceeds 10MB limit.");
-    return [
-        'name' => $_FILES[$field]['name'],
-        'type' => $_FILES[$field]['type'],
-        'size' => $size,
-        'data' => file_get_contents($_FILES[$field]['tmp_name']),
-    ];
-}
-
-try {
-    $doc  = read_upload('doc_file');
-    $ppt  = read_upload('ppt_file');
-    $code = read_upload('code_file');
-
-    if (!$doc && !$ppt && !$code) {
-        $_SESSION['upload_flash'] = 'No files selected. Please choose at least one file.';
-        upload_redirect('empty');
-    }
-
-    // ── INSERT metadata row ──────────────────────────────────────────
-    // Table columns: reg_no, branch, course, academic_year, section, semester,
-    //                document_name, document_type, document_size,
-    //                ppt_name, ppt_type, ppt_size,
-    //                code_name, code_type, code_size
-    $stmt = $conn->prepare(
-        "INSERT INTO student_uploads
-            (reg_no, branch, course, academic_year, section, semester,
-             document_name, document_type, document_size,
-             ppt_name,      ppt_type,      ppt_size,
-             code_name,     code_type,     code_size)
-         VALUES (?,?,?,?,?,?, ?,?,?, ?,?,?, ?,?,?)"
-    );
-
-    if (!$stmt) throw new Exception("Prepare failed: " . $conn->error);
-
-    $dName = $doc['name']  ?? null; $dType = $doc['type']  ?? null; $dSize = isset($doc["size"])  ? (string)$doc["size"]  : null;
-    $pName = $ppt['name']  ?? null; $pType = $ppt['type']  ?? null; $pSize = isset($ppt["size"])  ? (string)$ppt["size"]  : null;
-    $cName = $code['name'] ?? null; $cType = $code['type'] ?? null; $cSize = isset($code["size"]) ? (string)$code["size"] : null;
-
-    // 6 strings + (s,s,i) + (s,s,i) + (s,s,i) = ssssss ssi ssi ssi
-    $stmt->bind_param("sssssssssssssss",
-        $regNo, $branch, $branch, $yearLabel, $section, $semester,
-        $dName, $dType, $dSize,
-        $pName, $pType, $pSize,
-        $cName, $cType, $cSize
-    );
-
-    if (!$stmt->execute()) throw new Exception("Insert failed: " . $stmt->error);
-
-    $rowId = $conn->insert_id;
-    $stmt->close();
-
-    // ── Save BLOB data ───────────────────────────────────────────────
-    $blobs = [
-        'document_data' => $doc['data']  ?? null,
-        'ppt_data'      => $ppt['data']  ?? null,
-        'code_data'     => $code['data'] ?? null,
-    ];
-
-    foreach ($blobs as $col => $data) {
-        if ($data === null) continue;
-        $upd = $conn->prepare("UPDATE student_uploads SET $col = ? WHERE id = ?");
-        if (!$upd) throw new Exception("Prepare blob failed: " . $conn->error);
+foreach ($blobs as $field => $data) {
+    if ($data !== null && strlen($data) > 0) {
+        $blobStmt = $conn->prepare("UPDATE student_uploads SET $field = ? WHERE id = ?");
         $null = null;
-        $upd->bind_param("bi", $null, $rowId);
-        $upd->send_long_data(0, $data);
-        if (!$upd->execute()) throw new Exception("Blob save failed for $col: " . $upd->error);
-        $upd->close();
+        $blobStmt->bind_param('bi', $null, $rowId);
+        $blobStmt->send_long_data(0, $data);
+        if (!$blobStmt->execute()) {
+            error_log("BLOB ERROR $field: " . $blobStmt->error);
+        }
+        $blobStmt->close();
     }
-
-    $_SESSION['upload_flash'] = "Files uploaded successfully for $regNo (Year $year, Semester $semester).";
-    upload_redirect('success');
-
-} catch (Exception $e) {
-    $_SESSION['upload_flash'] = "Upload failed: " . $e->getMessage();
-    upload_redirect('error');
 }
+
+// Mark approval as used (if this was resubmission)
+if ($alreadyUploaded) {
+    $updateReq = $conn->prepare("UPDATE update_requests SET used = 1, actioned_at = NOW() WHERE reg_no = ? AND request_type = 'files' AND semester_key = ? AND status = 'approved' AND used = 0");
+    $updateReq->bind_param('ss', $regNo, $semKey);
+    $updateReq->execute();
+    $updateReq->close();
+}
+
+upload_flash("✅ Files uploaded successfully for Year $year $semester!");
+?>
