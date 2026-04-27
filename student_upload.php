@@ -22,6 +22,7 @@ $year        = trim($_POST['year']         ?? '');   // "1" or "2"
 $section     = trim($_POST['section']      ?? '');
 $semester    = trim($_POST['semester']     ?? '');   // "I" or "II"
 
+<<<<<<< Updated upstream
 // academic_year built from year  e.g. "2nd Year"
 $yearLabel   = ($year === '1') ? '1st Year' : (($year === '2') ? '2nd Year' : $year);
 
@@ -29,11 +30,43 @@ $yearLabel   = ($year === '1') ? '1st Year' : (($year === '2') ? '2nd Year' : $y
 if ($regNo === '' || $branch === '' || $year === '' || $semester === '') {
     $_SESSION['upload_flash'] = 'Please fill in Year and Semester before uploading.';
     upload_redirect('error');
+=======
+// Enforce branch/year from registration series:
+// FJ => BCA (1,2,3), FD => MCA (1,2)
+$letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
+$lettersArray = str_split($letters);
+sort($lettersArray);
+$track = implode('', $lettersArray);
+$expectedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
+$allowedYears = ($expectedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
+
+// Basic validation
+if (empty($regNo) || empty($year) || empty($semester)) {
+    upload_flash('Please fill Year and Semester.');
+>>>>>>> Stashed changes
+}
+if ($branch !== $expectedBranch || !in_array($year, $allowedYears, true)) {
+    upload_flash('Invalid branch/year for this registration number.');
 }
 
+<<<<<<< Updated upstream
 if (!in_array($semester, ['I', 'II'], true) || !in_array($year, ['1', '2', '3'], true)) {
     $_SESSION['upload_flash'] = 'Invalid Year/Semester selected.';
     upload_redirect('error');
+=======
+// ✅ PERFECT Semester/Year normalization to match ALL database formats
+$yearLabel = ($year == '1' || $year == 'Year 1') ? 'Year 1' :
+             (($year == '2' || $year == 'Year 2') ? 'Year 2' :
+             (($year == '3' || $year == 'Year 3') ? 'Year 3' : $year));
+
+$semDbFormat = '';
+if (strpos($semester, 'Semester') !== false) {
+    $semDbFormat = str_replace('Semester ', 'Sem ', $semester); // "Semester I" → "Sem I"
+} elseif (strlen($semester) <= 3 && ctype_alpha($semester)) {
+    $semDbFormat = strtoupper($semester); // "I", "II" → "II"
+} else {
+    $semDbFormat = trim($semester);
+>>>>>>> Stashed changes
 }
 
 // Enforce one-time upload per semester and strict order:

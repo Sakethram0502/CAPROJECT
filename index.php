@@ -37,6 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $regNo = trim($_POST['reg_no'] ?? '');
 
         $isValidRegNo = false;
+        $studentTrack = '';
         if ($regNo !== '' && strlen($regNo) === 10 && ctype_alnum($regNo)) {
             $digitCount = preg_match_all('/\d/', $regNo);
             $letters    = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
@@ -46,12 +47,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sort($lettersArray);
                 $normalizedLetters = implode('', $lettersArray);
                 $isValidRegNo = in_array($normalizedLetters, ['fj', 'df'], true);
+                if ($isValidRegNo) {
+                    $studentTrack = $normalizedLetters;
+                }
             }
         }
 
         if ($isValidRegNo) {
             $_SESSION['role']            = 'Student';
             $_SESSION['student_reg_no']  = $regNo;
+            $_SESSION['student_track']   = $studentTrack; // 'fj' => BCA, 'df' => MCA
             header('Location: student_dashboard.php');
             exit;
         } else {

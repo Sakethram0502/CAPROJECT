@@ -9,7 +9,63 @@ if (!isset($_SESSION['student_reg_no'])) {
 
 $regNo = $_SESSION['student_reg_no'];
 
+<<<<<<< Updated upstream
 // Fetch existing submissions for pre-fill and duplicate check
+=======
+// Identify track from login-reg format:
+// FJ => BCA (Years 1-3), FD => MCA (Years 1-2)
+$track = $_SESSION['student_track'] ?? '';
+if ($track !== 'fj' && $track !== 'df') {
+    $letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
+    $lettersArray = str_split($letters);
+    sort($lettersArray);
+    $track = implode('', $lettersArray);
+}
+$allowedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
+$allowedYears = ($allowedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
+
+// ── Ensure approval table exists ─────────────────────────────────────
+$conn->query("CREATE TABLE IF NOT EXISTS update_requests (
+    id            INT AUTO_INCREMENT PRIMARY KEY,
+    reg_no        VARCHAR(50) NOT NULL,
+    request_type  ENUM('files','details') NOT NULL,
+    semester_key  VARCHAR(20) DEFAULT NULL,
+    reason        TEXT NOT NULL,
+    status        ENUM('pending','approved','rejected') DEFAULT 'pending',
+    guide_remark  TEXT DEFAULT NULL,
+    requested_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    actioned_at   DATETIME DEFAULT NULL,
+    used          TINYINT(1) DEFAULT 0,
+    INDEX (reg_no), INDEX (status)
+)");
+
+// ── Student sends approval request ───────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_approval'])) {
+    $type   = $_POST['request_type'];
+    $semKey = trim($_POST['semester_key'] ?? '');
+    $reason = trim($_POST['reason'] ?? '');
+
+    // Block if same pending request already exists
+    $chk = $conn->prepare("SELECT id FROM update_requests
+                           WHERE reg_no = ? AND request_type = ? AND semester_key = ? AND status = 'pending' AND used = 0");
+    $chk->bind_param('sss', $regNo, $type, $semKey);
+    $chk->execute();
+
+    if ($chk->get_result()->num_rows === 0 && $reason !== '') {
+        $ins = $conn->prepare("INSERT INTO update_requests (reg_no, request_type, semester_key, reason)
+                               VALUES (?,?,?,?)");
+        $ins->bind_param('ssss', $regNo, $type, $semKey, $reason);
+        $ins->execute();
+        $_SESSION['flash'] = ['ok', 'Request sent to your guide. You can update once they approve.'];
+    } else {
+        $_SESSION['flash'] = ['warn', 'You already have a pending request for this semester. Wait for your guide to respond.'];
+    }
+    header("Location: student_dashboard.php");
+    exit;
+}
+
+// ── Fetch project submissions ────────────────────────────────────────
+>>>>>>> Stashed changes
 $stmt = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no = ? ORDER BY year, semester ASC");
 $stmt->bind_param("s", $regNo);
 $stmt->execute();
@@ -28,6 +84,7 @@ $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
 $uploadStmt = $conn->prepare("SELECT academic_year, semester FROM student_uploads WHERE reg_no = ? ORDER BY id ASC");
 $uploadStmt->bind_param("s", $regNo);
 $uploadStmt->execute();
+<<<<<<< Updated upstream
 $uploadRows = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $uploadedSlots = [];
 foreach ($uploadRows as $row) {
@@ -36,6 +93,20 @@ foreach ($uploadRows as $row) {
     if (preg_match('/(\d+)/', $academicYear, $m) && in_array($semesterVal, ['I', 'II'], true)) {
         $uploadedSlots[] = $m[1] . '|' . $semesterVal;
     }
+=======
+$uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
+foreach ($uploads as $u) {
+    $ay = trim((string)($u['academic_year'] ?? ''));
+    if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
+        $y = $m[1];
+    } elseif (in_array($ay, ['1', '2', '3'], true)) {
+        $y = $ay;
+    } else {
+        $y = '2';
+    }
+    $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
+    $fileUploadKeys[] = $y . '|' . $s;
+>>>>>>> Stashed changes
 }
 ?>
 <!DOCTYPE html>
@@ -104,17 +175,16 @@ foreach ($uploadRows as $row) {
                     <div class="form-group" style="flex:1;">
                         <label for="branch">Branch</label>
                         <select id="branch" name="branch" required>
-                            <option value="">-- Select --</option>
-                            <option value="BCA" <?php echo ($prefill['branch']??'')==='BCA'?'selected':''; ?>>BCA</option>
-                            <option value="MCA" <?php echo ($prefill['branch']??'')==='MCA'||empty($prefill)?'selected':''; ?>>MCA</option>
+                            <option value="<?php echo $allowedBranch; ?>" selected><?php echo $allowedBranch; ?></option>
                         </select>
                     </div>
                     <div class="form-group" style="flex:1;">
                         <label for="year">Year</label>
                         <select id="year" name="year" required onchange="updateSemester()">
                             <option value="">-- Select Year --</option>
-                            <option value="1" <?php echo ($prefill['year']??'')==='1'?'selected':''; ?>>Year 1</option>
-                            <option value="2" <?php echo ($prefill['year']??'')==='2'?'selected':''; ?>>Year 2</option>
+                            <?php foreach ($allowedYears as $yr): ?>
+                            <option value="<?php echo $yr; ?>" <?php echo ($prefill['year'] ?? '') === $yr ? 'selected' : ''; ?>>Year <?php echo $yr; ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -205,17 +275,27 @@ foreach ($uploadRows as $row) {
 
                 <!-- Hidden fields the upload script needs -->
                 <input type="hidden" name="reg_no"   value="<?php echo htmlspecialchars($regNo); ?>">
-                <input type="hidden" name="branch"   value="<?php echo htmlspecialchars($prefill['branch'] ?? 'MCA'); ?>">
                 <input type="hidden" name="section"  value="<?php echo htmlspecialchars($prefill['section'] ?? ''); ?>">
 
+<<<<<<< Updated upstream
                 <!-- Year + Semester visible to student -->
+=======
+                <div class="form-group">
+                    <label for="ul_branch">Branch</label>
+                    <select id="ul_branch" name="branch" required>
+                        <option value="<?php echo $allowedBranch; ?>" selected><?php echo $allowedBranch; ?></option>
+                    </select>
+                </div>
+
+>>>>>>> Stashed changes
                 <div style="display:flex;gap:14px;">
                     <div class="form-group" style="flex:1;">
                         <label for="ul_year">Year</label>
                         <select id="ul_year" name="year" required onchange="updateUploadSem()">
                             <option value="">-- Select --</option>
-                            <option value="1">Year 1</option>
-                            <option value="2">Year 2</option>
+                            <?php foreach ($allowedYears as $yr): ?>
+                            <option value="<?php echo $yr; ?>">Year <?php echo $yr; ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                     <div class="form-group" style="flex:1;">
