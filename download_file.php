@@ -20,12 +20,13 @@ if ($id <= 0) {
     die('Invalid request ID.');
 }
 
-// --- NEW ZIP LOGIC ---
+// --- ZIP LOGIC ---
 if ($type === 'zip') {
     $sql = "SELECT reg_no, 
                    document_name, document_data, 
                    ppt_name, ppt_data, 
-                   code_name, code_data 
+                   code_name, code_data,
+                   certificate_name, certificate_data
             FROM student_uploads WHERE id = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $id);
@@ -53,6 +54,9 @@ if ($type === 'zip') {
     if (!empty($fileSet['code_data'])) {
         $zip->addFromString($fileSet['code_name'], $fileSet['code_data']);
     }
+    if (!empty($fileSet['certificate_data'])) {
+        $zip->addFromString($fileSet['certificate_name'], $fileSet['certificate_data']);
+    }
 
     $zip->close();
 
@@ -63,15 +67,16 @@ if ($type === 'zip') {
     header('Pragma: no-cache');
     header('Expires: 0');
     readfile($tempFile);
-    unlink($tempFile); // Delete the temporary file from server
+    unlink($tempFile);
     exit;
 }
 
-// --- EXISTING SINGLE FILE LOGIC ---
+// --- SINGLE FILE DOWNLOAD LOGIC ---
 $typeMap = [
-    'document' => 'document',
-    'ppt'      => 'ppt',
-    'code'     => 'code'
+    'document'    => 'document',
+    'ppt'         => 'ppt',
+    'code'        => 'code',
+    'certificate' => 'certificate'   // ← new type
 ];
 
 if (!array_key_exists($type, $typeMap)) {
@@ -80,12 +85,11 @@ if (!array_key_exists($type, $typeMap)) {
 
 $realType = $typeMap[$type];
 
-// 5. Fetch File
+// Fetch file
 $nameCol = $realType . '_name';
-$mimeCol = $realType . '_type';
 $dataCol = $realType . '_data';
 
-$sql = "SELECT $nameCol AS name, $mimeCol AS mime, $dataCol AS data FROM student_uploads WHERE id = ?";
+$sql = "SELECT $nameCol AS name, $dataCol AS data FROM student_uploads WHERE id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param('i', $id);
 $stmt->execute();
@@ -97,10 +101,16 @@ if (!$file || empty($file['data'])) {
     die('File content is empty in database.');
 }
 
-// 6. Mandatory Headers for Binary Files
+// Determine MIME type
 $filename = $file['name'];
-$mime     = $file['mime'] ?: 'application/octet-stream';
-$size     = strlen($file['data']);
+$mime = 'application/octet-stream'; // default
+if ($realType === 'certificate' && $filename) {
+    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    if ($ext === 'pdf') $mime = 'application/pdf';
+    elseif ($ext === 'doc') $mime = 'application/msword';
+    elseif ($ext === 'docx') $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+}
+$size = strlen($file['data']);
 
 header('Content-Description: File Transfer');
 header('Content-Type: ' . $mime);
@@ -111,6 +121,5 @@ header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
 header('Pragma: public');
 header('Content-Length: ' . $size);
 
-// 7. Output the data
 echo $file['data'];
 exit;

@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </div>
 
-        <!-- Role buttons: HOD | Staff | Student (Upload Files removed) -->
+        <!-- Role buttons -->
         <div class="btn-group-center">
             <a href="?view=hod" class="btn-glass <?php echo $view === 'hod' ? 'active' : ''; ?>" data-role="hod">
                 <span class="btn-glass-inner">
@@ -129,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </span>
                 <span class="btn-ripple"></span>
             </a>
+
             <a href="?view=staff" class="btn-glass <?php echo $view === 'staff' ? 'active' : ''; ?>" data-role="staff">
                 <span class="btn-glass-inner">
                     <span class="btn-icon" aria-hidden="true">
@@ -146,6 +147,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </span>
                 <span class="btn-ripple"></span>
             </a>
+
             <a href="?view=student" class="btn-glass <?php echo $view === 'student' ? 'active' : ''; ?>" data-role="student">
                 <span class="btn-glass-inner">
                     <span class="btn-icon" aria-hidden="true">
@@ -161,6 +163,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </span>
                 <span class="btn-ripple"></span>
             </a>
+
+            <!-- Analytics Button (direct link) -->
+<a href="analytics.php?programme=mca" class="btn-glass">
+    <span class="btn-glass-inner">
+        <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="13" width="3.5" height="7" rx=".7" fill="#59B35C"/>
+                <rect x="8" y="10" width="3.5" height="10" rx=".7" fill="#6F98DB"/>
+                <rect x="13" y="7" width="3.5" height="13" rx=".7" fill="#476087"/>
+                <path d="M4.5 11 9 7.5l3 2.5 4-4.5" stroke="#F0B03E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="18" cy="5" r="1.5" fill="#F0B03E"/>
+            </svg>
+        </span>
+        <span class="btn-label">Analytics</span>
+        <span class="btn-sub">Dashboard</span>
+    </span>
+    <span class="btn-ripple"></span>
+</a>
         </div>
 
         <?php if ($view === 'hod' || $view === 'staff' || $view === 'student'): ?>
@@ -271,5 +291,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </main>
 
     <script src="landing.js"></script>
+    <script>
+    function toggleAnalyticsDropdown(e) {
+        e.stopPropagation();
+        var d = document.getElementById('analyticsDropdown');
+        var arrow = document.getElementById('analyticsArrow');
+        var isOpen = d.classList.toggle('open');
+        arrow.textContent = isOpen ? 'Dashboard ▴' : 'Dashboard ▾';
+    }
+    document.addEventListener('click', function(e) {
+        var wrap = document.getElementById('analyticsWrap');
+        if (wrap && !wrap.contains(e.target)) {
+            document.getElementById('analyticsDropdown').classList.remove('open');
+            document.getElementById('analyticsArrow').textContent = 'Dashboard ▾';
+        }
+    });
+    </script>
 </body>
 </html>

@@ -9,11 +9,7 @@ if (!isset($_SESSION['student_reg_no'])) {
 
 $regNo = $_SESSION['student_reg_no'];
 
-
-// Fetch existing submissions for pre-fill and duplicate check
-
-// Identify track from login-reg format:
-// FJ => BCA (Years 1-3), FD => MCA (Years 1-2)
+// Identify track from login-reg format
 $track = $_SESSION['student_track'] ?? '';
 if ($track !== 'fj' && $track !== 'df') {
     $letters = strtolower(preg_replace('/[^a-z]/i', '', $regNo));
@@ -24,7 +20,7 @@ if ($track !== 'fj' && $track !== 'df') {
 $allowedBranch = ($track === 'fj') ? 'BCA' : 'MCA';
 $allowedYears = ($allowedBranch === 'BCA') ? ['1', '2', '3'] : ['1', '2'];
 
-// ── Ensure approval table exists ─────────────────────────────────────
+// Ensure approval table exists
 $conn->query("CREATE TABLE IF NOT EXISTS update_requests (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     reg_no        VARCHAR(50) NOT NULL,
@@ -39,13 +35,12 @@ $conn->query("CREATE TABLE IF NOT EXISTS update_requests (
     INDEX (reg_no), INDEX (status)
 )");
 
-// ── Student sends approval request ───────────────────────────────────
+// Handle approval request submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_approval'])) {
     $type   = $_POST['request_type'];
     $semKey = trim($_POST['semester_key'] ?? '');
     $reason = trim($_POST['reason'] ?? '');
 
-    // Block if same pending request already exists
     $chk = $conn->prepare("SELECT id FROM update_requests
                            WHERE reg_no = ? AND request_type = ? AND semester_key = ? AND status = 'pending' AND used = 0");
     $chk->bind_param('sss', $regNo, $type, $semKey);
@@ -58,14 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['request_approval'])) 
         $ins->execute();
         $_SESSION['flash'] = ['ok', 'Request sent to your guide. You can update once they approve.'];
     } else {
-        $_SESSION['flash'] = ['warn', 'You already have a pending request for this semester. Wait for your guide to respond.'];
+        $_SESSION['flash'] = ['warn', 'You already have a pending request for this semester.'];
     }
     header("Location: student_dashboard.php");
     exit;
 }
 
-// ── Fetch project submissions ────────────────────────────────────────
-
+// Fetch existing submissions
 $stmt = $conn->prepare("SELECT * FROM student_submissions WHERE reg_no = ? ORDER BY year, semester ASC");
 $stmt->bind_param("s", $regNo);
 $stmt->execute();
@@ -77,7 +71,7 @@ foreach ($existing as $row) {
 }
 $prefill = !empty($existing) ? $existing[count($existing)-1] : [];
 
-// ── Fetch approval requests ──────────────────────────────────────────
+// Fetch approval requests
 $reqStmt = $conn->prepare("SELECT * FROM update_requests WHERE reg_no=? ORDER BY requested_at DESC");
 $reqStmt->bind_param('s', $regNo);
 $reqStmt->execute();
@@ -95,9 +89,6 @@ function reqState($reqIndex, $type, $semKey) {
     if ($r['status'] === 'approved' && !$r['used']) return 'approved';
     return $r['status'];
 }
-function reqRow($reqIndex, $type, $semKey) {
-    return $reqIndex[$type.'|'.$semKey] ?? null;
-}
 
 $guides = [
     'Dr. K. Gayatri','Dr. K. Santhi Sri','Dr. M. Srikanth Yadav',
@@ -108,47 +99,23 @@ $guides = [
 $prefillKey   = ($prefill['year'] ?? '').'|'.($prefill['semester'] ?? '');
 $prefillExist = isset($existingByKey[$prefillKey]) && $prefillKey !== '|';
 
-// ── File Upload Keys (student_uploads table) ──────────────────────────
+// File upload keys for duplicate detection
 $fileUploadKeys = [];
 $uploadStmt = $conn->prepare("SELECT academic_year, semester FROM student_uploads WHERE reg_no = ?");
 $uploadStmt->bind_param("s", $regNo);
 $uploadStmt->execute();
-
-$uploadRows = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-$uploadedSlots = [];
-foreach ($uploadRows as $row) {
-    $academicYear = (string)($row['academic_year'] ?? '');
-    $semesterVal  = strtoupper(trim((string)($row['semester'] ?? '')));
-    if (preg_match('/(\d+)/', $academicYear, $m) && in_array($semesterVal, ['I', 'II'], true)) {
-        $uploadedSlots[] = $m[1] . '|' . $semesterVal;
-    }
-
-$uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-foreach ($uploads as $u) {
-    $ay = trim((string)($u['academic_year'] ?? ''));
+$uploadStmt->bind_result($academic_year, $semester);
+while ($uploadStmt->fetch()) {
+    $ay = trim((string)$academic_year);
     if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
         $y = $m[1];
-    } elseif (in_array($ay, ['1', '2', '3'], true)) {
+    } elseif (in_array($ay, ['1','2','3'], true)) {
         $y = $ay;
     } else {
         $y = '2';
     }
-    $s = strlen($u['semester']) <= 2 ? strtoupper($u['semester']) : $u['semester'];
+    $s = strlen((string)$semester) <= 2 ? strtoupper((string)$semester) : (string)$semester;
     $fileUploadKeys[] = $y . '|' . $s;
-
-$uploads = $uploadStmt->get_result()->fetch_all(MYSQLI_ASSOC);
-foreach ($uploads as $u) {
-    $ay = trim((string)($u['academic_year'] ?? ''));
-    if (preg_match('/year\s*([1-3])/i', $ay, $m)) {
-        $y = $m[1];
-    } elseif (in_array($ay, ['1', '2', '3'], true)) {
-        $y = $ay;
-    } else {
-        $y = '2';
-    }
-    $s = strlen((string)$u['semester']) <= 2 ? strtoupper((string)$u['semester']) : (string)$u['semester'];
-    $fileUploadKeys[] = $y . '|' . $s;
-
 }
 $uploadStmt->close();
 ?>
@@ -230,13 +197,6 @@ $uploadStmt->close();
             box-sizing: border-box;
         }
 
-        .file-hint  { font-size:0.75em; color:var(--text-muted); margin-top:4px; }
-
-        select:disabled {
-            opacity:0.45;
-            cursor:not-allowed;
-        }
-
         .flash-ok {
             padding:12px 16px;
             border-radius:8px;
@@ -261,6 +221,70 @@ $uploadStmt->close();
             max-width:900px;
             box-sizing: border-box;
         }
+
+        /* Title Assistant */
+        #title-assistant {
+            transition: opacity 0.2s;
+            font-family: 'DM Sans', sans-serif;
+        }
+        #title-assistant .keyword-chip {
+            cursor: pointer;
+            background: rgba(255,255,255,0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            display: inline-block;
+            margin: 2px;
+            transition: background 0.15s;
+        }
+        #title-assistant .keyword-chip:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* Originality badge pill */
+        #originality-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 4px 13px;
+            border-radius: 20px;
+            letter-spacing: 0.03em;
+            transition: background 0.25s, color 0.25s, border-color 0.25s;
+        }
+        #originality-badge.level-high {
+            background: rgba(0, 204, 102, 0.18);
+            color: #00ff88;
+            border: 1.5px solid #00cc66;
+        }
+        #originality-badge.level-moderate {
+            background: rgba(255, 204, 0, 0.15);
+            color: #ffdd33;
+            border: 1.5px solid #ffcc00;
+        }
+        #originality-badge.level-low {
+            background: rgba(255, 68, 68, 0.18);
+            color: #ff7070;
+            border: 1.5px solid #ff4444;
+        }
+
+        /* Originality meter bar */
+        .originality-bar-wrap {
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.10);
+            border-radius: 4px;
+            margin: 8px 0 12px;
+            overflow: hidden;
+        }
+        .originality-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.45s ease, background 0.3s;
+        }
+
+        .file-hint { font-size: 0.75em; color: var(--text-muted); margin-top: 4px; }
 
         @media (max-width: 900px) {
             .dashboard-main.centered {
@@ -301,7 +325,6 @@ $uploadStmt->close();
                 <h1>Submit / Update Project Details</h1>
                 <p style="color:var(--text-muted);font-size:0.84em;">
                     Select Year first — Semester options will update automatically.
-                    If a record exists for that semester, you will see an update screen.
                 </p>
             </div>
 
@@ -358,7 +381,7 @@ $uploadStmt->close();
 
                 <div id="dup-warn" class="alert-warn">
                     You have already submitted a project for this semester.
-                    Submitting will open the <strong>Update</strong> screen with your existing details pre-filled.
+                    To update, request guide approval.
                 </div>
 
                 <div class="form-group">
@@ -373,6 +396,19 @@ $uploadStmt->close();
                     <input type="text" id="project_title" name="project_title" required
                            placeholder="Full project name"
                            value="<?php echo htmlspecialchars($prefill['project_title'] ?? ''); ?>">
+                    <!-- Title Assistant Container -->
+                    <div id="title-assistant" style="display:none; margin-top: 8px; background: rgba(0,0,0,0.35); border-radius: 12px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.18); color: #fff;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                            <span style="font-weight:700; font-size:0.9rem;">🧠 Title Assistant</span>
+                            <span id="originality-badge">—</span>
+                        </div>
+                        <!-- Originality progress bar -->
+                        <div class="originality-bar-wrap">
+                            <div class="originality-bar-fill" id="originality-bar" style="width:0%;"></div>
+                        </div>
+                        <div id="sim-titles" style="font-size:0.8rem; margin-bottom:6px;"></div>
+                        <div id="suggest-keywords" style="font-size:0.78rem; color:rgba(255,255,255,0.7);"></div>
+                    </div>
                 </div>
 
                 <div class="form-group">
@@ -390,7 +426,7 @@ $uploadStmt->close();
             </form>
         </div>
 
-        <!-- File Upload Form -->
+        <!-- File Upload Form (with Certificate input) -->
         <div class="glass-panel">
             <div class="app-header">
                 <h2>Upload Project Files</h2>
@@ -411,7 +447,6 @@ $uploadStmt->close();
             <form method="post" action="student_upload.php" class="form-glass" enctype="multipart/form-data" id="files-form">
                 <input type="hidden" name="reg_no"   value="<?php echo htmlspecialchars($regNo); ?>">
                 <input type="hidden" name="section"  value="<?php echo htmlspecialchars($prefill['section'] ?? ''); ?>">
-
 
                 <div class="form-group">
                     <label for="ul_branch">Branch</label>
@@ -456,6 +491,13 @@ $uploadStmt->close();
                     <div class="file-hint">PDF, DOC, DOCX only</div>
                 </div>
 
+                <!-- NEW: Certificate Upload -->
+                <div class="form-group">
+                    <label for="cert_file">Certificate (Completion / Approval)</label>
+                    <input type="file" id="cert_file" name="cert_file" accept=".pdf,.doc,.docx">
+                    <div class="file-hint">Only PDF or Word files (.pdf, .doc, .docx)</div>
+                </div>
+
                 <button type="submit" id="files-submit-btn" class="btn-gradient" style="width:100%;">Upload Files</button>
             </form>
         </div>
@@ -480,8 +522,7 @@ const reqStates  = <?php
     echo json_encode($map);
 ?>;
 
-// --- Project Details Form logic ---
-
+// --- Semester / duplicate logic for details form ---
 function updateSemester() {
     const year    = document.getElementById('year').value;
     const semSel  = document.getElementById('semester');
@@ -499,13 +540,11 @@ function updateSemester() {
     semSel.add(new Option('-- Select Semester --', ''));
     ['I','II'].forEach(function(s) {
         const key    = year + '|' + s;
-        const exists = projectSubs.includes(key); // ✅ FIXED: was 'submitted', now 'projectSubs'
-        const label  = 'Semester ' + s + (exists ? '' : '');
-        const opt    = new Option(label, s);
+        const exists = projectSubs.includes(key);
+        const opt    = new Option('Semester ' + s + (exists ? '' : ''), s);
         if (exists) opt.setAttribute('data-exists','1');
         semSel.add(opt);
     });
-
     semSel.disabled = false;
 }
 
@@ -517,7 +556,6 @@ function onSemChange() {
     const semKey = year + '|' + semSel.value;
 
     dupWarn.style.display = (opt && opt.getAttribute('data-exists') === '1') ? 'block' : 'none';
-
     if (opt && opt.getAttribute('data-exists') === '1') {
         showNotice('details', semKey);
     } else {
@@ -525,16 +563,11 @@ function onSemChange() {
     }
 }
 
-// --- File Upload Form logic ---
-
+// --- Upload form semester logic ---
 function updateUploadSem() {
     const year = document.getElementById('ul_year').value;
     const semSel = document.getElementById('ul_sem');
-
-    while (semSel.options.length > 0) {
-        semSel.remove(0);
-    }
-
+    semSel.innerHTML = '';
     semSel.disabled = true;
     clearNotice('files');
 
@@ -545,12 +578,9 @@ function updateUploadSem() {
     }
 
     semSel.add(new Option('-- Select Semester --', ''));
-    ['I', 'II'].forEach(function(s) {
-        const label = 'Semester ' + s;
-        const opt = new Option(label, s);
-        semSel.add(opt);
+    ['I','II'].forEach(function(s) {
+        semSel.add(new Option('Semester ' + s, s));
     });
-
     semSel.disabled = false;
 }
 
@@ -558,7 +588,6 @@ function onUploadSemChange() {
     const year   = document.getElementById('ul_year').value;
     const semSel = document.getElementById('ul_sem');
     const semKey = year + '|' + semSel.value;
-
     if (year && semSel.value && fileUploads.includes(semKey)) {
         showNotice('files', semKey);
     } else {
@@ -566,8 +595,7 @@ function onUploadSemChange() {
     }
 }
 
-// --- Show notice for details or files ---
-
+// --- Approval notice rendering ---
 function showNotice(form, semKey) {
     const box = document.getElementById(form + '-notice');
     const stateKey = form + '|' + semKey;
@@ -581,62 +609,36 @@ function showNotice(form, semKey) {
 
     if (status === 'approved' && used === 0) {
         box.classList.add('approved-state');
-        box.innerHTML = '<div class="an-title" style="color:#00ff88;">Guide Approved</div>'
-            + '<div class="an-sub">Your guide approved this update. You can submit the form below.</div>';
+        box.innerHTML = '<div class="an-title" style="color:#00ff88;">Guide Approved</div>' +
+            '<div class="an-sub">Your guide approved this update. You can submit the form below.</div>';
         enableSubmit(form);
-    }
-    else if (status === 'approved' && used === 1) {
+    } else if (status === 'approved' && used === 1) {
         box.classList.add('warn');
         const semLabel = semKey.replace('|', ' — Semester ');
         const label = form === 'details' ? 'update project details' : 'resubmit files';
-        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">You have already used your guide approval for Year ' + semLabel + '</div>'
-            + '<div class="an-sub">To ' + label + ', please send a new approval request to your guide.</div>'
-            + '<form method="POST">'
-            + '<input type="hidden" name="request_approval" value="1">'
-            + '<input type="hidden" name="request_type" value="' + form + '">'
-            + '<input type="hidden" name="semester_key" value="' + semKey + '">'
-            + '<textarea class="an-textarea" name="reason" required placeholder="Explain why you need to update again..."></textarea>'
-            + '<button type="submit" class="an-btn warn-btn">Send New Request to Guide</button>'
-            + '</form>';
+        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">Approval already used for Year ' + semLabel + '</div>' +
+            '<div class="an-sub">To ' + label + ', send a new request.</div>' +
+            reqFormHTML(form, semKey);
         disableSubmit(form);
-    }
-    else if (status === 'pending') {
+    } else if (status === 'pending') {
         box.classList.add('pending-state');
-        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">Approval Pending</div>'
-            + '<div class="an-sub">Your request is waiting for guide approval. Sent on ' + req.date + '</div>';
+        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">Approval Pending</div>' +
+            '<div class="an-sub">Your request is waiting. Sent on ' + req.date + '</div>';
         disableSubmit(form);
-    }
-    else if (status === 'rejected') {
+    } else if (status === 'rejected') {
         box.classList.add('rejected-state');
-        const remark = req.remark ? '<div class="an-remark">Guide\'s reason: "' + escHtml(req.remark) + '"</div>' : '';
-        box.innerHTML = '<div class="an-title" style="color:#ff8080;">Request Rejected by Guide</div>'
-            + remark
-            + '<div class="an-sub">You can send a new request explaining why you need to '
-            + (form==='details'?'update details':'resubmit files')
-            + '.</div>'
-            + '<form method="POST">'
-            + '<input type="hidden" name="request_approval" value="1">'
-            + '<input type="hidden" name="request_type" value="' + form + '">'
-            + '<input type="hidden" name="semester_key" value="' + semKey + '">'
-            + '<textarea class="an-textarea" name="reason" required placeholder="Explain your reason..."></textarea>'
-            + '<button type="submit" class="an-btn reject-btn">Send New Request to Guide</button>'
-            + '</form>';
+        const remarkHtml = req.remark ? '<div class="an-remark">Guide\'s reason: "' + escHtml(req.remark) + '"</div>' : '';
+        box.innerHTML = '<div class="an-title" style="color:#ff8080;">Rejected by Guide</div>' + remarkHtml +
+            '<div class="an-sub">You can send a new request.</div>' + reqFormHTML(form, semKey);
         disableSubmit(form);
-    }
-    else {
+    } else {
+        // Regular duplicate with no approval yet
         box.classList.add('warn');
         const semLabel = semKey.replace('|', ' — Semester ');
         const label = form === 'details' ? 'update project details' : 'resubmit files';
-        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">You have already submitted for Year ' + semLabel + '</div>'
-            + '<div class="an-sub">You have already ' + (form==='details'?'submitted project details':'uploaded files') + ' for this semester. '
-            + 'To ' + label + ', please provide a reason and request your guide\'s approval.</div>'
-            + '<form method="POST">'
-            + '<input type="hidden" name="request_approval" value="1">'
-            + '<input type="hidden" name="request_type" value="' + form + '">'
-            + '<input type="hidden" name="semester_key" value="' + semKey + '">'
-            + '<textarea class="an-textarea" name="reason" required placeholder="e.g. Wrong title entered, updated report after feedback..."></textarea>'
-            + '<button type="submit" class="an-btn warn-btn">Send Request to Guide</button>'
-            + '</form>';
+        box.innerHTML = '<div class="an-title" style="color:#ffcc00;">Already submitted for Year ' + semLabel + '</div>' +
+            '<div class="an-sub">To ' + label + ', provide a reason and request guide approval.</div>' +
+            reqFormHTML(form, semKey);
         disableSubmit(form);
     }
 }
@@ -646,6 +648,16 @@ function clearNotice(form) {
     box.style.display = 'none';
     box.innerHTML = '';
     enableSubmit(form);
+}
+
+function reqFormHTML(form, semKey) {
+    return '<form method="POST">' +
+        '<input type="hidden" name="request_approval" value="1">' +
+        '<input type="hidden" name="request_type" value="' + form + '">' +
+        '<input type="hidden" name="semester_key" value="' + semKey + '">' +
+        '<textarea class="an-textarea" name="reason" required placeholder="Explain why you need to update..."></textarea>' +
+        '<button type="submit" class="an-btn warn-btn">Send Request to Guide</button>' +
+        '</form>';
 }
 
 function disableSubmit(form) {
@@ -664,11 +676,122 @@ function enableSubmit(form) {
         btn.style.cursor = 'pointer';
     }
 }
+
 function escHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// On page load: populate semester if year is pre-filled
+// ─────── Title Assistant (Smart Originality + Suggestion) ───────
+let titleDebounceTimer;
+const titleInput = document.getElementById('project_title');
+const assistantDiv = document.getElementById('title-assistant');
+const simTitlesDiv = document.getElementById('sim-titles');
+const suggestKwDiv = document.getElementById('suggest-keywords');
+const originalityBadge = document.getElementById('originality-badge');
+const branchInput = document.getElementById('branch');
+const studentBranch = branchInput ? branchInput.value : '';
+
+titleInput.addEventListener('input', function() {
+    const val = this.value.trim();
+    if (val.length < 5) {
+        assistantDiv.style.display = 'none';
+        return;
+    }
+    clearTimeout(titleDebounceTimer);
+    titleDebounceTimer = setTimeout(() => fetchAssistant(val), 400);
+});
+
+function fetchAssistant(query) {
+    const xhr = new XMLHttpRequest();
+    const url = `title-assistant.php?q=${encodeURIComponent(query)}&branch=${encodeURIComponent(studentBranch)}`;
+    xhr.open('GET', url, true);
+    xhr.onload = function() {
+        if (xhr.status === 200) {
+            try {
+                const data = JSON.parse(xhr.responseText);
+                renderAssistant(data);
+            } catch(e) {
+                assistantDiv.style.display = 'none';
+            }
+        } else {
+            assistantDiv.style.display = 'none';
+        }
+    };
+    xhr.onerror = function() {
+        assistantDiv.style.display = 'none';
+    };
+    xhr.send();
+}
+
+function renderAssistant(data) {
+    if (!data || data.error) {
+        assistantDiv.style.display = 'none';
+        return;
+    }
+
+    assistantDiv.style.display = 'block';
+
+    // --- Originality badge ---
+    const score = data.originality_score ?? 0;
+    const level = data.originality_level ?? (score >= 75 ? 'high' : score >= 50 ? 'moderate' : 'low');
+    const label = data.originality_label ?? (level === 'high' ? 'High' : level === 'moderate' ? 'Moderate' : 'Low');
+
+    const icons = { high: '🟢', moderate: '🟡', low: '🔴' };
+
+    originalityBadge.textContent = icons[level] + ' ' + label + ' (' + score + '%)';
+    originalityBadge.className   = 'level-' + level;   // triggers CSS pill color
+
+    // --- Originality progress bar ---
+    const bar = document.getElementById('originality-bar');
+    if (bar) {
+        bar.style.width = score + '%';
+        bar.style.background = level === 'high' ? '#00cc66' : level === 'moderate' ? '#ffcc00' : '#ff4444';
+    }
+
+    // --- Update assistant panel border color to match ---
+    const borderColors = { high: 'rgba(0,204,102,0.45)', moderate: 'rgba(255,204,0,0.45)', low: 'rgba(255,68,68,0.45)' };
+    assistantDiv.style.borderColor = borderColors[level];
+
+    // --- Similar titles ---
+    if (data.similar_titles && data.similar_titles.length > 0) {
+        let html = '<div style="margin-bottom:8px; font-weight:600; font-size:0.85rem;">🔍 Similar existing titles:</div>';
+        data.similar_titles.forEach(item => {
+            const simColor = item.similarity >= 70 ? '#ff7070' : item.similarity >= 40 ? '#ffcc00' : '#aaa';
+            html += `<div style="padding:4px 0; color:rgba(255,255,255,0.82); display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                        <span>• ${escHtml(item.title)}</span>
+                        <span style="color:${simColor}; font-size:0.75rem; white-space:nowrap; font-weight:600;">${item.similarity}% match</span>
+                     </div>`;
+        });
+        simTitlesDiv.innerHTML = html;
+    } else {
+        simTitlesDiv.innerHTML = '<div style="color:rgba(255,255,255,0.45); font-size:0.8rem;">✅ No close matches found in existing titles.</div>';
+    }
+
+    // --- Suggested keywords ---
+    if (data.suggested_keywords && data.suggested_keywords.length > 0) {
+        suggestKwDiv.innerHTML = `<div style="font-weight:600; font-size:0.8rem; margin:8px 0 4px;">💡 Add keywords to improve uniqueness:</div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                ${data.suggested_keywords.map(kw =>
+                    `<span class="keyword-chip" onclick="appendKeyword('${escHtml(kw)}')">+ ${escHtml(kw)}</span>`
+                ).join('')}
+            </div>`;
+    } else {
+        suggestKwDiv.innerHTML = '';
+    }
+}
+
+function appendKeyword(word) {
+    const input = document.getElementById('project_title');
+    const current = input.value.trim();
+    if (current && !current.endsWith(' ')) {
+        input.value = current + ' ' + word;
+    } else {
+        input.value = current + word;
+    }
+    input.dispatchEvent(new Event('input'));
+}
+
+// Preload semester if year is already selected
 window.addEventListener('DOMContentLoaded', function() {
     const yr = document.getElementById('year').value;
     if (yr) updateSemester();
