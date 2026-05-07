@@ -194,7 +194,7 @@ $BATCH_DATA = [
                 <a href="hod_dashboard.php?view=staff" class="sidebar-link <?php echo $view==='staff'?'active':''; ?>">Staff</a>
                 <a href="hod_dashboard.php?view=batch" class="sidebar-link <?php echo $view==='batch'?'active':''; ?>">Batch</a>
             </aside>
-
+          
             <main class="dashboard-main">
 
             <?php
